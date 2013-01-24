@@ -1,0 +1,33 @@
+{
+  "name": "Backbone.Drowsy",
+  "preferGlobal": "true",
+  "version": "0.0.1",
+  "author": "Matt Zukowski",
+  "description": "Backbone Model for use with DrowsyDromedary (MongoDB) as a backend",
+  "contributors": [ 
+    {
+      "name": "Matt Zukowski",
+      "email": "matt@zukowski.ca"
+    } 
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zuk/Backbone.Drowsy.git"
+  },
+  "dependencies": {
+    "jquery" : "*",
+    "underscore" : "*",
+    "backbone" : "*"
+  },
+  "analyze": false,
+  "devDependencies": {
+    "mocha" : "*",
+    "should" : "*"
+  },
+  "bundleDependencies": [
+  ],  
+  "license": "MIT",
+  "engines": {
+    "node": ">=0.8"
+  }
+}
