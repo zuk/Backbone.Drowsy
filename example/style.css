@@ -1,0 +1,37 @@
+@import url(http://fonts.googleapis.com/css?family=Droid+Sans:400,700);
+
+body {
+    font-family: "Droid Sans",sans-serif;
+}
+span.hint {
+    font-size: 9pt;
+    font-style: italic;
+    opacity: 0.7;
+}
+code {
+    font-style: normal;
+    background-color: #ff8;
+    border-radius: 4px;
+    display: inline-block;
+    padding: 2px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+label {
+    font-weight: bold;
+}
+
+fieldset.data {
+    display: block;
+    border: 2px dashed #aaa;
+    padding: 8px;
+    white-space: pre;
+    font-family: monospace;
+}
+legend {
+    font-family: sans-serif;
+    font-weight: bold;
+}
+*.optional * {
+    font-size: 70% !important;
+}

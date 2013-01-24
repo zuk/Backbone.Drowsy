@@ -2,7 +2,142 @@
 <html>
 <head>
     <title>Backbone.DrowsyDromedary</title>
+
+    <script src="http://code.jquery.com/jquery-1.9.0.js"></script>
+    <script src="http://underscorejs.org/underscore.js"></script>
+    <script src="http://backbonejs.org/backbone.js"></script>
+
+    <script src="../backbone.drowsy.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 <body>
+    <p>
+
+    <script>
+        "use strict"; 
+
+        var server; // Drowsy.Server instance
+        var db; // Drowsy.Database instance
+        var collection; // Drowsy.Collection (or ExampleColl) instance
+        
+        var ExampleColl; // Drowsy.Collection class
+        var ExampleDoc; // Drowsy.Document class
+
+        var databases = {};
+        var collections = {};
+
+        $(function () {
+            $('#database').hide();
+            $('#collection').hide();
+
+            $('#fetch-dbs').on('click', function () {
+                $('#database').show();
+                $('#enter-a-url-first').hide();
+
+                var url = $('#drowsy-url').val();
+                server = new Drowsy.Server(url);
+
+                server.databases(function (dbs) {
+                    $('#database').html('');
+                    _.each(dbs, function (db) {
+                        databases[db.name] = db;
+                        $('#database')
+                            .append('<option value="'+db.name+'">'+db.name+'</option>');
+                    });
+                });
+            });
+
+            $('#fetch-collections').on('click', function () {
+                $('#collection').show();
+                $('#select-a-db-first').hide();
+
+                var dbName = $('#database').val();
+
+                db = server.database(dbName);
+
+                // could also do this instead:
+                //
+                //   db = databases[dbName];
+                //
+
+                db.collections(function (colls) {
+                    $('#collection').html('');
+                    _.each(colls, function (coll) {
+                        collections[coll.name] = coll;
+                        $('#collection')
+                            .append('<option value="'+coll.name+'">'+coll.name+'</option>');
+                    });
+                });
+
+            });
+
+            $('#fetch-documents').on('click', function () {
+                var collName = $('#collection').val();
+
+                ExampleDoc = db.Document(collName).extend({});
+                ExampleColl = db.Collection(collName).extend({
+                    model: ExampleDoc
+                });
+
+                collection = new ExampleColl();
+
+                // could also do this instead:
+                //
+                //   collection = collections[collName];
+                //
+
+                collection.on('sync', function () {
+                    $('#data').text(
+                        JSON.stringify(collection.toJSON(), null, 4)
+                    );
+                });
+                collection.fetch();
+            });
+
+            //$('#username, #password').on('change', function () {
+                var username = $('#username').val();
+                var password = $('#password').val();
+                Backbone.$.ajaxSetup({
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader('Authorization', 
+                            'Basic '+btoa(username+':'+password));
+                    }
+                });
+            //});
+        });
+    </script>
+
+    <dl>
+        <dt class="optional"><label for="drowsy-url">Basic HTTP AUTH <em>(optional)</em>:</label></dt>
+        <dd class="optional"><span class="hint">Username:</span> <input type="text" value="" id="username" style="width: 10em" /></dd>
+        <dd class="optional"><span class="hint">Password:</span> <input type="text" value="" id="password" style="width: 10em" /></dd>
+
+        <dt><label for="drowsy-url">DrowsyDromedary URL:</label></dt>
+        <dd>
+            <input type="text" id="drowsy-url" style="width: 40em" value="" />
+            <button type="submit" id="fetch-dbs">Fetch Databases</button>
+        </dd>
+
+        <dt><label for="drowsy-url">Database:</label></dt>
+        <dd>
+            <span class="hint" id="enter-a-url-first">Enter a DrowsyDromedary URL first!</span>
+            <select name="database" id="database">
+            </select>
+            <button type="submit" id="fetch-collections">Fetch Collections</button>
+        </dd>
+
+        <dt><label for="drowsy-url">Collection:</label></dt>
+        <dd>
+            <span class="hint" id="select-a-db-first">Select a database first!</span>
+            <select name="collection" id="collection">
+            </select>
+            <button type="submit" id="fetch-documents">Fetch Documents</button>
+        </dd>
+    </dl>
+
+    <fieldset class="data" id="data">
+        <legend>Data</legend>
+    </fieldset>
 </body>
 </html>
