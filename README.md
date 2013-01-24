@@ -59,3 +59,17 @@ Browser or Node.js?
 Backbone.Drowsy should work both in a browser and under node.js.
 
 
+Running Tests/Specs
+-------------------
+
+With node, `cd` into the Backbone.Drowsy directory, then install dependencies using:
+
+`npm install`
+
+You should now be able to run all tests in `test/`:
+
+`cake test`
+
+
+
+
