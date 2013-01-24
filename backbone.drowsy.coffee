@@ -15,7 +15,8 @@ class Drowsy
     #   ... also might have to move to Drowsy.Server to accomodate machineid (??)
     @generateMongoObjectId: ->
         base = 16
-        randLength = 13
+        randLength = 11
+
         time = (Date.now()*1000).toString(base)
         rand = Math.ceil(Math.random() * (Math.pow(base, randLength) - 1)).toString(base)
         time + (Array(randLength + 1).join("0") + rand).slice(-randLength)
@@ -70,6 +71,22 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
                     c = new class extends db.Collection(collName)
                     colls.push c
                 after(colls)
+
+    createCollection: (collectionName, after) =>
+        db = @
+        Backbone.ajax
+            url: db.url
+            type: 'POST'
+            data: {collection: collectionName}
+            complete: (xhr, status) ->
+                if after?
+                    console.log xhr.status
+                    if xhr.status is 304
+                        after('already_exists')
+                    else if xhr.status is 201
+                        after('created')
+                    else
+                        after('failed', xhr.status)
 
     Document: (collectionName) =>
         db = @

@@ -23,7 +23,7 @@
     Drowsy.generateMongoObjectId = function() {
       var base, rand, randLength, time;
       base = 16;
-      randLength = 13;
+      randLength = 11;
       time = (Date.now() * 1000).toString(base);
       rand = Math.ceil(Math.random() * (Math.pow(base, randLength) - 1)).toString(base);
       return time + (Array(randLength + 1).join("0") + rand).slice(-randLength);
@@ -93,6 +93,8 @@
 
       this.Document = __bind(this.Document, this);
 
+      this.createCollection = __bind(this.createCollection, this);
+
       this.collections = __bind(this.collections, this);
 
       if (typeof server === 'string') {
@@ -129,6 +131,30 @@
             colls.push(c);
           }
           return after(colls);
+        }
+      });
+    };
+
+    Database.prototype.createCollection = function(collectionName, after) {
+      var db;
+      db = this;
+      return Backbone.ajax({
+        url: db.url,
+        type: 'POST',
+        data: {
+          collection: collectionName
+        },
+        complete: function(xhr, status) {
+          if (after != null) {
+            console.log(xhr.status);
+            if (xhr.status === 304) {
+              return after('already_exists');
+            } else if (xhr.status === 201) {
+              return after('created');
+            } else {
+              return after('failed', xhr.status);
+            }
+          }
         }
       });
     };

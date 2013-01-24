@@ -38,6 +38,11 @@ unless TEST_URL?
     console.error("TEST_URL must point to a DrowsyDromedary server!")
 
 describe 'Drowsy', ->
+    describe ".generateMongoObjectId", ->
+        it "should generate a 24-character hex string", ->
+            id = Drowsy.generateMongoObjectId()
+            id.should.match /^[0-9a-f]{24}$/
+
     describe 'Drowsy.Server', ->
         before ->
            @server = new Drowsy.Server(TEST_URL)
@@ -90,9 +95,15 @@ describe 'Drowsy', ->
             it "should instantiate Drowsy.Collection instances with valid urls and collectionNames", (done) ->
                 @db.collections (colls) ->
                     _.each colls, (coll) ->
-                        console.log coll.url
+                        #console.log coll.url
                         coll.url.should.not.match /undefined/
                         coll.name.should.exist
+                    done()
+
+        describe '#createCollection', ->
+            it "should create the given collection in this database", (done) ->
+                @db.createCollection TEST_COLLECTION, (result) ->
+                    result.should.match /success|already_exists/
                     done()
 
         describe "#Document", ->
@@ -178,6 +189,28 @@ describe 'Drowsy', ->
                 json.faa.another.should.eql {"$date": "2013-01-24T02:01:35.151Z"}
                 json.fee.should.equal "non-date value"
                 json.boo.should.eql {}
+
+        describe "#save", ->
+            it "should upsert using a client-side generated ObjectID", (done) ->
+                @server = new Drowsy.Server(TEST_URL)
+                @db = new Drowsy.Database(@server, TEST_DB)
+
+                class MyDoc extends @db.Document(TEST_COLLECTION)
+
+                doc = new MyDoc()
+
+                console.log "Doc URL is:", doc.url()
+
+                #doc.on 'all', (args...) -> console.log(args)
+                doc.save {},
+                    success: (data, status, xhr) -> 
+                    
+                    error: (data, xhr) ->
+                        console.log xhr
+                        console.log "Doc save error:",JSON.parse(xhr.responseText).error
+                    complete: (xhr, status) ->
+                        xhr.status.should.equal 200
+                        done()
 
     describe 'Drowsy.Collection', ->
         # TODO: write some specs

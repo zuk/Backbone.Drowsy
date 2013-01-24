@@ -44,6 +44,13 @@
   }
 
   describe('Drowsy', function() {
+    describe(".generateMongoObjectId", function() {
+      return it("should generate a 24-character hex string", function() {
+        var id;
+        id = Drowsy.generateMongoObjectId();
+        return id.should.match(/^[0-9a-f]{24}$/);
+      });
+    });
     describe('Drowsy.Server', function() {
       before(function() {
         return this.server = new Drowsy.Server(TEST_URL);
@@ -112,10 +119,17 @@
         return it("should instantiate Drowsy.Collection instances with valid urls and collectionNames", function(done) {
           return this.db.collections(function(colls) {
             _.each(colls, function(coll) {
-              console.log(coll.url);
               coll.url.should.not.match(/undefined/);
               return coll.name.should.exist;
             });
+            return done();
+          });
+        });
+      });
+      describe('#createCollection', function() {
+        return it("should create the given collection in this database", function(done) {
+          return this.db.createCollection(TEST_COLLECTION, function(result) {
+            result.should.match(/success|already_exists/);
             return done();
           });
         });
@@ -222,7 +236,7 @@
           return parsed.meh.date2.getTime().should.equal((new Date("2013-01-24T02:01:35.151Z")).getTime());
         });
       });
-      return describe("#toJSON", function() {
+      describe("#toJSON", function() {
         it("should NOT convert _id to {$oid: '...'}", function() {
           var doc, json;
           doc = new Drowsy.Document();
@@ -249,6 +263,37 @@
           });
           json.fee.should.equal("non-date value");
           return json.boo.should.eql({});
+        });
+      });
+      return describe("#save", function() {
+        return it("should upsert using a client-side generated ObjectID", function(done) {
+          var MyDoc, doc;
+          this.server = new Drowsy.Server(TEST_URL);
+          this.db = new Drowsy.Database(this.server, TEST_DB);
+          MyDoc = (function(_super) {
+
+            __extends(MyDoc, _super);
+
+            function MyDoc() {
+              return MyDoc.__super__.constructor.apply(this, arguments);
+            }
+
+            return MyDoc;
+
+          })(this.db.Document(TEST_COLLECTION));
+          doc = new MyDoc();
+          console.log("Doc URL is:", doc.url());
+          return doc.save({}, {
+            success: function(data, status, xhr) {},
+            error: function(data, xhr) {
+              console.log(xhr);
+              return console.log("Doc save error:", JSON.parse(xhr.responseText).error);
+            },
+            complete: function(xhr, status) {
+              xhr.status.should.equal(200);
+              return done();
+            }
+          });
         });
       });
     });
