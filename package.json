@@ -21,6 +21,7 @@
   },
   "analyze": false,
   "devDependencies": {
+    "coffee-script" : "*",
     "mocha" : "*",
     "should" : "*"
   },
