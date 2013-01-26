@@ -49,8 +49,32 @@ myDatabase.collections(function (colls) {
 });
 ```
 
-See the [example](https://github.com/zuk/Backbone.Drowsy/tree/master/example) and [test](https://github.com/zuk/Backbone.Drowsy/tree/master/test)
+See the [example](https://github.com/zuk/Backbone.Drowsy/tree/master/example) 
+and [test](https://github.com/zuk/Backbone.Drowsy/tree/master/test)
 directories for more details.
+
+
+Authentication
+--------------
+
+For basic HTTP authentication, run the following code prior to sending out 
+any requests:
+
+```js
+var username = "foo";
+var password = "bar";
+
+Backbone.$.ajaxSetup({
+  beforeSend: function(xhr) {
+    return xhr.setRequestHeader('Authorization', 
+        'Basic ' + btoa(username + ':' + password));
+  }
+});
+```
+
+See the AJAX configuration options for [jQuery](http://api.jquery.com/category/ajax/)
+or [Zepto](http://zeptojs.com/#ajax), dependin on which Backbone sync backend you're
+ using.
 
 
 Browser or Node.js?
