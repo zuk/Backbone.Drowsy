@@ -8,6 +8,7 @@
     $ = window.$;
     _ = window._;
     Backbone = window.Backbone;
+    Drowsy = window.Drowsy;
   } else {
     $ = require('jquery');
     _ = require('underscore');

@@ -3,9 +3,10 @@ if window?
     $ = window.$
     _ = window._
     Backbone = window.Backbone
+    Drowsy = window.Drowsy
 else
     # we're running in node
-    $ = require('jquery');
+    $ = require 'jquery'
     _ = require 'underscore'
     Backbone = require 'backbone'
     Backbone.$ = $
