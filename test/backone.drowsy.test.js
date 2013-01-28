@@ -22,7 +22,7 @@
   */
 
 
-  TEST_URL = "http://localhost:9393/";
+  TEST_URL = "http://localhost:9292/";
 
   TEST_DB = 'drowsy_test';
 

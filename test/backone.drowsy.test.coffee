@@ -17,7 +17,7 @@ NOTE: These tests are done against a live DrowsyDromedary instance!
 ###
 
 #TEST_URL = "http://drowsy.badger.encorelab.org/"
-TEST_URL = "http://localhost:9393/"
+TEST_URL = "http://localhost:9292/"
 TEST_DB = 'drowsy_test'
 TEST_COLLECTION = 'tests'
 
