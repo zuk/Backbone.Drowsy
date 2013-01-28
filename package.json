@@ -21,6 +21,9 @@
     "backbone" : "*"
   },
   "analyze": false,
+  "optionalDependencies": {
+    "ws" : "*"
+  },
   "devDependencies": {
     "coffee-script" : "*",
     "mocha" : "*",
