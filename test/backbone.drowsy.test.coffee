@@ -10,6 +10,7 @@ else
     _ = require 'underscore'
     Backbone = require 'backbone'
     Backbone.$ = $
+    should = require('chai').should()
     {Drowsy} = require '../backbone.drowsy'
 
 ###

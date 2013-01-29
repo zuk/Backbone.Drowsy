@@ -10,16 +10,14 @@ else
     Backbone = require 'backbone'
     Backbone.$ = $
 
-class Drowsy
-    # FIXME: change this to better match the ObjectID spec: http://www.mongodb.org/display/DOCSDE/Object+IDs#ObjectIDs-BSONObjectIDSpecification
-    #   ... also might have to move to Drowsy.Server to accomodate machineid (??)
-    @generateMongoObjectId: ->
-        base = 16
-        randLength = 11
+    # for Drowsy.ObjectId
+    crypto = require 'crypto'
+    os = require 'os'
 
-        time = (Date.now()*1000).toString(base)
-        rand = Math.ceil(Math.random() * (Math.pow(base, randLength) - 1)).toString(base)
-        time + (Array(randLength + 1).join("0") + rand).slice(-randLength)
+class Drowsy
+    # TODO: should machineid be tied to Drowsy.Server rather than the client?
+    @generateMongoObjectId: ->
+        new Drowsy.ObjectId()
 
 
 class Drowsy.Server
@@ -158,7 +156,89 @@ class Drowsy.Document extends Backbone.Model
         else
             val
 
+#
+# Adapted from https://github.com/justaprogrammer/ObjectId.js
+#
+#*
+#* Copyright (c) 2011 Justin Dearing (zippy1981@gmail.com)
+#* Dual licensed under the MIT (http://www.opensource.org/licenses/mit-license.php)
+#* and GPL (http://www.opensource.org/licenses/gpl-license.php) version 2 licenses.
+#* This software is not distributed under version 3 or later of the GPL.
+#*
+#* Version 1.0.0
+#*
+#
 
+###
+Javascript class that mimics how WCF serializes a object of type MongoDB.Bson.ObjectId
+and converts between that format and the standard 24 character representation.
+
+TODO: move this stuff out into its own module...
+###
+class Drowsy.ObjectId
+    @increment: 0
+
+    constructor: (oid, machine, pid, incr) ->
+        pid = pid ? Math.floor(Math.random() * (32767))
+        machine = machine ? Math.floor(Math.random() * (16777216))
+        
+        if document?
+            if localStorage?
+                mongoMachineId = parseInt(localStorage["mongoMachineId"])
+                machine = Math.floor(localStorage["mongoMachineId"])  if mongoMachineId >= 0 and mongoMachineId <= 16777215
+            
+                # Just always stick the value in.
+                localStorage["mongoMachineId"] = machine
+                document.cookie = "mongoMachineId=" + machine + ";expires=Tue, 19 Jan 2038 05:00:00 GMT"
+            else
+                cookieList = document.cookie.split("; ")
+                for i of cookieList
+                    cookie = cookieList[i].split("=")
+                    if cookie[0] is "mongoMachineId" and cookie[1] >= 0 and cookie[1] <= 16777215
+                        machine = cookie[1]
+                        break
+                document.cookie = "mongoMachineId=" + machine + ";expires=Tue, 19 Jan 2038 05:00:00 GMT"
+        else
+            mongoMachineId = crypto.createHash('md5').update(os.hostname()).digest('binary')
+
+        if typeof oid is "object"
+            @timestamp = oid.timestamp
+            @machine = oid.machine
+            @pid = oid.pid
+            @increment = oid.increment
+        else if typeof oid is "string" and oid.length is 24
+            @timestamp = Number("0x" + oid.substr(0, 8))
+            @machine = Number("0x" + oid.substr(8, 6))
+            @pid = Number("0x" + oid.substr(14, 4))
+            @increment = Number("0x" + oid.substr(18, 6))
+        else if oid? and machine? and pid? and incr?
+            @timestamp = oid
+            @machine = machine
+            @pid = pid
+            @increment = incr
+        else
+            @timestamp = Math.floor(new Date().valueOf() / 1000)
+            @machine = machine
+            @pid = pid
+            Drowsy.ObjectId.increment = 0  if Drowsy.ObjectId.increment > 0xffffff
+            @increment = Drowsy.ObjectId.increment++
+
+    getDate: ->
+      new Date(@timestamp * 1000)
+
+
+    ###
+    Turns a WCF representation of a BSON ObjectId into a 24 character string representation.
+    ###
+    toString: ->
+      timestamp = @timestamp.toString(16)
+      machine = @machine.toString(16)
+      pid = @pid.toString(16)
+      increment = @increment.toString(16)
+      return "00000000".substr(0, 6 - timestamp.length) + timestamp + 
+        "000000".substr(0, 6 - machine.length) + machine + 
+        "0000".substr(0, 4 - pid.length) + pid + 
+        "000000".substr(0, 6 - increment.length) + increment
 
 
 root = exports ? this

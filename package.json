@@ -27,7 +27,7 @@
   "devDependencies": {
     "coffee-script" : "*",
     "mocha" : "*",
-    "should" : "*"
+    "chai" : "*"
   },
   "bundleDependencies": [
   ],  

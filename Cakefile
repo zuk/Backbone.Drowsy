@@ -22,7 +22,7 @@ buildTests = (callback) ->
 test = (callback) ->
     console.log "Running tests..."
 
-    exec "mocha --colors --require should --reporter spec --slow 1000 --timeout 3000 --recursive test",
+    exec "mocha --colors --require chai --reporter spec --recursive test",
         (err, stdout, stderr) ->
             if stdout?
                 print stdout

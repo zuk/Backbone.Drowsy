@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Backbone.DrowsyDromedary Tests</title>
+  <link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+</head>
+<body>
+  <div id="mocha"></div>
+  <script src="http://code.jquery.com/jquery-1.9.0.js"></script>
+  <script src="http://underscorejs.org/underscore.js"></script>
+  <script src="http://backbonejs.org/backbone.js"></script>
+  
+  <script src="../node_modules/chai/chai.js"></script>
+  <script src="../node_modules/mocha/mocha.js"></script>
+  <script>
+    window.should = chai.should();
+    mocha.setup('bdd');
+  </script>
+
+  <script src="../backbone.drowsy.js"></script>
+  <script src="../wakeful.js"></script>
+
+  <script src="backbone.drowsy.test.js"></script>
+  <script src="wakeful.test.js"></script>
+  <script>
+    mocha.run();
+  </script>
+</body>
+</html>
