@@ -18,7 +18,7 @@ else
     WebSocket = require 'ws'
 
 DROWSY_URL = "http://localhost:9292"
-WAKEFUL_URL = "ws://localhost:7777"
+FAYE_URL = "http://localhost:7777/faye" unless FAYE_URL?
 TEST_DB = 'drowsy_test'
 TEST_COLLECTION = 'tests'
 
@@ -45,180 +45,117 @@ describe 'Wakeful', ->
         class TestDoc extends @db.Document(TEST_COLLECTION)
         @TestDoc = TestDoc
 
-    beforeEach ->
-        Wakeful.websockets = {}
-        Wakeful.subs = {}
+        class TestColl extends @db.Collection(TEST_COLLECTION)
+            model: TestDoc
+        @TestColl = TestColl
 
-    afterEach (done) ->
-        dfs = []
-        for url,ws of Wakeful.websockets
-            dfs.push ws.ensuredClose()
-
-        $.when.apply($, dfs).done ->
-            done()
+    afterEach ->
+        for sub in Wakeful.subs
+            sub.cancel()
 
 
     describe ".wake", ->
-        it 'should enhance Drowsy.Document with wakeful functionality', (done) ->
+        it 'should enhance Drowsy.Document with wakeful functionality', ->
             doc = new @TestDoc()
 
-            (Wakeful.wake doc, WAKEFUL_URL).done ->
+            Wakeful.wake doc, FAYE_URL
 
-                doc.should.have.property 'tunein'
-                doc.tunein.should.be.a 'function'
+            doc.should.have.property 'tunein'
+            doc.tunein.should.be.a 'function'
 
-                doc.should.have.property 'broadcast'
-                doc.broadcast.should.be.a 'function'
+            doc.should.have.property 'broadcast'
+            doc.broadcast.should.be.a 'function'
 
+        it 'should automatically tunein the object', (done) ->
+            doc = new @TestDoc()
+
+            dsub = Wakeful.wake doc, FAYE_URL
+
+            dsub.should.have.property 'resolve'
+            dsub.resolve.should.be.a 'function'
+
+            dsub.done ->
                 done()
-
-        it 'should not create more than one WebSocket per ws URL', (done) ->
-            doc1 = new @TestDoc()
-            doc2 = new @TestDoc()
-            doc3 = new @TestDoc()
-            doc4 = new @TestDoc()
-
-            df1 = Wakeful.wake doc1, WAKEFUL_URL
-            df2 = Wakeful.wake doc2, WAKEFUL_URL
-            df3 = Wakeful.wake doc3, WAKEFUL_URL
-
-            $.when(df1,df2,df3).done ->
-                Object.keys(Wakeful.websockets).length.should.equal 1
-
-                doc1.websocket.should.equal doc2.websocket
-                doc2.websocket.should.equal doc3.websocket
-
-                df4 = Wakeful.wake doc4, WAKEFUL_URL+"/foo"
-
-                df4.done ->
-                    Object.keys(Wakeful.websockets).length.should.equal 2
-                    doc1.websocket.should.not.equal doc4.websocket
-                    done()
-
-        it 'should create websockets that support ensuredClose()', (done) ->
-            doc1 = new @TestDoc()
-            doc2 = new @TestDoc()
-            doc3 = new @TestDoc()
-
-            df1 = Wakeful.wake doc1, WAKEFUL_URL
-            df2 = Wakeful.wake doc2, WAKEFUL_URL
-            df3 = Wakeful.wake doc3, WAKEFUL_URL
-
-            $.when(df1,df2,df3).done ->
-                doc1.websocket.should.have.property 'ensuredClose'
-                doc2.websocket.should.have.property 'ensuredClose'
-                doc3.websocket.should.have.property 'ensuredClose'
-
-                doc1.websocket.ensuredClose().done ->
-                    doc1.websocket.readyState.should.equal WebSocket.CLOSED
-                    doc2.websocket.readyState.should.equal WebSocket.CLOSED
-                    doc3.websocket.readyState.should.equal WebSocket.CLOSED
-                    done()
 
 
         describe "#tunein", ->
             it 'should return a $.Deferred', (done) ->
-                console.log 'should return a $.Deferred'
                 doc = new @TestDoc()
 
-                (Wakeful.wake doc, WAKEFUL_URL).done ->
-                    sub = doc.tunein()
+                Wakeful.wake doc, FAYE_URL, tunein: false
 
-                    # duck typing check
-                    sub.should.have.property 'resolve'
-                    sub.resolve.should.be.a 'function'
+                dsub = doc.tunein()
 
-                    sub.done -> done()
+                # duck typing check
+                dsub.should.have.property 'resolve'
+                dsub.resolve.should.be.a 'function'
 
-            it 'should make sure a WebSocket is open', (done) ->
-                console.log 'should make sure a WebSocket is open'
-                doc = new @TestDoc()
+                dsub.done -> done()
 
-                Wakeful.wake doc, WAKEFUL_URL
-                
-                sub = doc.tunein()
-
-                sub.always ->
-                    doc.websocket.readyState.should.equal WebSocket.OPEN
-                    done()
-
-            it 'should register a subscription with Wakeful', (done) ->
-                console.log 'should register a subscription with Wakeful'
-                doc = new @TestDoc()
-
-                Wakeful.wake doc, WAKEFUL_URL
-                
-                sub = doc.tunein()
-
-                sub.done ->
-                    Wakeful.subs[doc.resourceUrl()].length.should.equal 1
-                    Wakeful.subs[doc.resourceUrl()].should.include doc
-                    done()
-
-            it 'should allow multiple subscriptions for the same URL', (done) ->
-                docA = new @TestDoc()
-                docB = new @TestDoc()
-                docB.set('_id', docA.id)
-
-                Wakeful.wake docA, WAKEFUL_URL
-                Wakeful.wake docB, WAKEFUL_URL 
-
-                subA = docA.tunein()
-                subB = docB.tunein()
-                console.log "A",docA.resourceUrl()
-                console.log "B",docB.resourceUrl()
-
-                subA.done -> console.log "A", "DONE"
-                subB.done -> console.log "B", "DONE"
-
-                $.when(subA, subB).done ->
-                    Wakeful.subs[docA.resourceUrl()].length is 2
-                    done()
-
-            it 'should trigger wakeful:subscription and then resolve', (done) ->
+            it 'should be able to subscribe to multiple documents and collections', (done) ->
                 doc1 = new @TestDoc()
                 doc2 = new @TestDoc()
+                coll1 = new @TestColl()
+                coll2 = new @TestColl()
 
-                Wakeful.wake doc1, WAKEFUL_URL
-                Wakeful.wake doc2, WAKEFUL_URL 
+                Wakeful.wake doc1, FAYE_URL, tunein: false
+                Wakeful.wake doc2, FAYE_URL, tunein: false
+                Wakeful.wake coll1, FAYE_URL, tunein: false
+                Wakeful.wake coll2, FAYE_URL, tunein: false
+                
+                dsubDoc1 = doc1.tunein()
+                dsubDoc2 = doc2.tunein()
+                dsubColl1 = coll1.tunein()
+                dsubColl2 = coll2.tunein()
 
-                subA = doc1.tunein()
-                subB = doc2.tunein()
-                console.log "A",doc1.resourceUrl()
-                console.log "B",doc2.resourceUrl()
+                $.when(dsubDoc1, dsubDoc2, dsubColl1, dsubColl2).always ->
+                    dsubDoc1.state().should.equal 'resolved'
+                    doc1.should.have.property 'sub'
+                    doc1.sub.should.be.an.instanceof Faye.Subscription
 
-                subA.done -> console.log "A", "DONE"
-                subB.done -> console.log "B", "DONE"
+                    dsubDoc2.state().should.equal 'resolved'
+                    doc2.should.have.property 'sub'
+                    doc2.sub.should.be.an.instanceof Faye.Subscription
+                    
+                    dsubColl1.state().should.equal 'resolved'
+                    coll1.should.have.property 'sub'
+                    coll1.sub.should.be.an.instanceof Faye.Subscription
 
-                $.when(subA, subB).done ->
-                    Wakeful.subs[doc1.resourceUrl()].length is 2
+                    dsubColl2.state().should.equal 'resolved'
+                    coll2.should.have.property 'sub'
+                    coll2.sub.should.be.an.instanceof Faye.Subscription
+
                     done()
 
-
-
         describe "#broadcast", ->
-            # it "should notify when sent, and resolve when echoed", (done) ->
-            #     doc = new @TestDoc()
-            #     doc.save().done ->
-            #         Wakeful.wake doc, WAKEFUL_URL
-            #         doc.connect().done ->
-            #             rand = Math.random()
-            #             doc.set 'foo', rand
+            it "should notify when sent, and resolve when echoed", (done) ->
+                doc = new @TestDoc()
+                doc.save().done ->
+                    dsub = Wakeful.wake doc, FAYE_URL
+                    dsub.done ->
+                        rand = Math.random()
+                        doc.set 'foo', rand
 
-            #             sent = false
+                        sent = false
 
-            #             bc = doc.broadcast 'update', doc.toJSON()
-            #             bc.done ->
-            #                 sent.should.be.true
-            #                 done()
-            #             bc.progress (note) ->
-            #                 note.should.equal 'sent'
-            #                 sent = true
+                        dpub = doc.broadcast 'update', doc.toJSON()
+                        # FIXME: dsub.progress is never triggered because
+                        #       Faye echoes back the broadcast before the
+                        #       'sent' callback that calld dsub.notify()
+                        #       is called.
+                        dpub.progress (note) ->
+                            note.should.equal 'sent'
+                            sent = true
+                        dpub.always ->
+                            dpub.state().should.equal 'resolved'
+                            #sent.should.be.true
+                            done()
+                        
             
             # it "should push onto the broadcastEchoQueue and then pop when echo received", (done) ->
             #     doc = new @TestDoc()
             #     doc.save().done ->
-            #         Wakeful.wake doc, WAKEFUL_URL
+            #         Wakeful.wake doc, FAYE_URL
             #         doc.connect().done ->
             #             rand = Math.random()
             #             doc.set 'foo', rand
@@ -263,78 +200,215 @@ describe 'Wakeful', ->
                     doc2.url().should.equal doc1.url()
                     
                     doc2.save().done ->
-                        console.log "Doc2 saved"
-                        Wakeful.wake doc1, WAKEFUL_URL
-                        Wakeful.wake doc2, WAKEFUL_URL
+                        dsubA = Wakeful.wake doc1, FAYE_URL
+                        dsubB = Wakeful.wake doc2, FAYE_URL
+
+                        dsubA.state().should.equal 'pending'
+                        dsubB.state().should.equal 'pending'
                         
-                        conn1 = doc1.connect()
-                        conn2 = doc2.connect()
-
-
-                        sub1 = false
-                        sub2 = false
-
-                        doc1.on 'wakeful:tuneind', ->
-                            sub1 = true
-                        doc2.on 'wakeful:tuneind', ->
-                            sub2 = true
-
-                        conn1.state().should.equal 'pending'
-                        conn2.state().should.equal 'pending'
-                        
-                        # when both have connected
-                        $.when(conn1, conn2).done ->
-                            conn1.state().should.equal 'resolved'
-                            conn2.state().should.equal 'resolved'
-                            sub1.should.be.true
-                            sub2.should.be.true
-                            console.log "Both open"
-                            #console.log "Both Docs connected to WakefulWeasel"
+                        # when both have subscribed
+                        $.when(dsubA, dsubB).done ->
                             rand = Math.random()
-                            doc1.set 'foo', rand
+                            doc1.set('foo', rand)
                             doc1.get('foo').should.equal rand
                             doc2.has('foo').should.be.false
 
-                            doc1.wid = 'doc1'
-                            doc2.wid = 'doc2'
-
                             doc2.on 'change', ->
-                                console.log "Doc2 changed"
                                 doc2.get('foo').should.equal rand
                                 done()
 
-                            bc = doc1.broadcast 'update', doc1.toJSON(), doc1.wid
+                            bc = doc1.broadcast 'update', doc1.toJSON()
                             bc.progress (n) ->
                                 console.log n
 
+            it "should send an update from a Drowsy.Document to its containing Drowsy.Collection", (done) ->
+                doc1 = new @TestDoc()
+                coll1 = new @TestColl()
+
+                doc1.save().done ->
+                        
+                    dsubA = Wakeful.wake doc1, FAYE_URL
+                    dsubB = Wakeful.wake coll1, FAYE_URL
+
+                    dsubA.state().should.equal 'pending'
+                    dsubB.state().should.equal 'pending'
+                    
+                    # when both have subscribed
+                    $.when(dsubA, dsubB).done ->
+                        coll1.fetch().done ->
+
+                            rand = Math.random()
+                            doc1.set('foo', rand)
+                            doc1.get('foo').should.equal rand
+
+                            coll1.get(doc1.id).should.not.have.property 'foo'
+
+                            coll1.on 'change', ->
+                                coll1.get(doc1.id).get('foo').should.equal rand
+                                done()
+
+                            bc = doc1.broadcast 'update', doc1.toJSON()
+                            bc.progress (n) ->
+                                console.log n
+
+    describe ".set", ->
+        it "should return a deferred when the broadcast flag is set",  ->
+            doc1 = new @TestDoc()
+
+            dsub1 = Wakeful.wake doc1, FAYE_URL
+
+            dsub1.done ->
+                rand = Math.random()
+                df = doc1.set('foo', rand, {broadcast: true})
+
+                df.should.have.property('resolve')
+                df.resolve.should.be.a 'function'
+
+
+        it "should broadcast the change as a patch when broadcast flag is set", (done) ->
+            doc1 = new @TestDoc()
+
+            dsub1 = Wakeful.wake doc1, FAYE_URL
+
+            dsub1.done ->
+                rand = Math.random()
+                dpub = doc1.set('foo', rand, {broadcast: true})
+
+                # TODO: check (somehow?) that we actually broadcast something...
+                #       presumably dpub won't resolve until we received the broadcast
+                #       but maybe better to make sure?
+
+                dpub.done ->
+                    dpub.state().should.equal 'resolved'
+                    done()
+
+        it "should should NOT persist the change when broadcast flag is set", (done) ->
+            doc1 = new @TestDoc()
+
+            doc1.set('foo', 'bar')
+
+            doc1.save().done ->
+
+                dsub1 = Wakeful.wake doc1, FAYE_URL
+
+                dsub1.done ->
+                    rand = Math.random()
+                    dpub = doc1.set('foo', rand, {broadcast: true})
+
+                    dpub.done ->
+                        doc1.get('foo').should.equal rand
+                        dpub.state().should.equal 'resolved'
+                        doc1.fetch().done ->
+                            doc1.get('foo').should.equal 'bar'
+                            done()
+
+
+        it "should NOT broadcast the change if the broadcast flag was not set", (done) ->
+            doc1 = new @TestDoc()
+
+            dsub1 = Wakeful.wake doc1, FAYE_URL
+
+            dsub1.done ->
+                rand = Math.random()
+                dpub = doc1.set('foo', rand, {broadcast: false})
+
+                # dpub should be undefined
+                (!dpub?).should.be.true
+                done()
                         
 
-    # describe ".sync", ->
-    #     it "should cause an update to be synced across existing Drowsy.Documents", (done) ->
-    #         doc1 = new @TestDoc()
-    #         doc2 = new @TestDoc()
+    describe ".sync", ->
+        it "should sync an update across existing Drowsy.Documents", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
 
-    #         doc1.save().done ->
-    #             doc2.set '_id', doc1.id
-    #             doc2.fetch().done ->
-    #                 doc1.toJSON().should.eql doc2.toJSON()
+            doc1.set('bar', 'a')
 
-    #                 Wakeful.wake doc1, WAKEFUL_URL
-    #                 Wakeful.wake doc2, WAKEFUL_URL
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
+                doc2.fetch().done ->
+                    doc1.toJSON().should.eql doc2.toJSON()
 
-    #                 conn1 = doc1.connect()
-    #                 conn2 = doc2.connect()
+                    dsub1 = Wakeful.wake doc1, FAYE_URL
+                    dsub2 = Wakeful.wake doc2, FAYE_URL
 
-    #                 # when both have connected
-    #                 $.when(conn1, conn2).done ->
-    #                     rand = Math.random()
-    #                     doc1.set 'foo', rand
+                    # this change will be reversed by the sync
+                    doc2.set('bar', 'b')
+
+                    # when both have subscribed
+                    $.when(dsub1, dsub2).done ->
+                        rand = Math.random()
+                        doc1.set 'foo', rand
                         
-    #                     doc2.on 'change', ->
-    #                         doc2.get('foo').should.equal rand
-    #                         done()
+                        doc2.on 'change', ->
+                            doc2.get('foo').should.equal rand
+                            doc2.get('bar').should.equal 'a'
+                            done()
 
-    #                     doc1.save()
+                        doc1.save()
+
+        it "should sync a patch across existing Drowsy.Documents", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            doc1.set('bar', 'a')
+
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
+                doc2.fetch().done ->
+                    doc1.toJSON().should.eql doc2.toJSON()
+
+                    dsub1 = Wakeful.wake doc1, FAYE_URL
+                    dsub2 = Wakeful.wake doc2, FAYE_URL
+
+                    # this change will be NOT be reversed by the sync
+                    doc2.set('bar', 'b')
+
+                    # when both have subscribed
+                    $.when(dsub1, dsub2).done ->
+                        rand = Math.random()
+
+                        # 'patch' request ignores attributes set with .set()
+                        # ... need to specify the attrs we want patched in 
+                        # the first argument to save() ...
+                        #doc1.set 'foo', rand
+                        
+                        doc2.on 'change', ->
+                            doc2.get('foo').should.equal rand
+                            doc2.get('bar').should.equal 'b'
+                            done()
+
+                        # ... like so
+                        doc1.save({foo: rand}, {patch: true, broadcast: true})
+                        # NOTE: need to also set broadcast flag when sending a patch!
+                        #   The following will fail, because .sync is never triggered:
+                        #
+                        # doc1.save({foo: rand}, {patch: true})
+
+
+        it "should sync an update from a Drowsy.Document to a Drowsy.Collection", (done) ->
+            doc1 = new @TestDoc()
+            coll1 = new @TestColl()
+
+            doc1.save().done ->
+                coll1.fetch().done ->
+
+                    coll1.get(doc1.id).toJSON().should.eql doc1.toJSON()
+
+                    dsub1 = Wakeful.wake doc1, FAYE_URL
+                    dsub2 = Wakeful.wake coll1, FAYE_URL
+
+                    # when both have subscribed
+                    $.when(dsub1, dsub2).done ->
+
+                        rand = Math.random()
+                        doc1.set 'foo', rand
+                        
+                        coll1.get(doc1.id).on 'change', ->
+                            coll1.get(doc1.id).get('foo').should.equal rand
+                            done()
+
+                        doc1.save()
 
                         
 

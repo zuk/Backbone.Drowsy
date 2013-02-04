@@ -10,15 +10,21 @@
   <script src="http://code.jquery.com/jquery-1.9.0.js"></script>
   <script src="http://underscorejs.org/underscore.js"></script>
   <script src="http://backbonejs.org/backbone.js"></script>
+  <script src="http://backbonejs.org/backbone.js"></script>
   
   <script src="../node_modules/chai/chai.js"></script>
   <script src="../node_modules/mocha/mocha.js"></script>
   <script>
+    var FAYE_URL = "http://localhost:7777/faye"
+
     window.should = chai.should();
     mocha.setup('bdd');
+    mocha.setup({globals: ['hasCert']});
   </script>
 
   <script src="../backbone.drowsy.js"></script>
+
+  <script src="http://localhost:7777/faye/client.js"></script>
   <script src="../wakeful.js"></script>
 
   <script src="backbone.drowsy.test.js"></script>

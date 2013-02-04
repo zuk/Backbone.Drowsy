@@ -54,7 +54,7 @@ describe 'Drowsy', ->
                 @server.url().slice(-1).should.not.equal '/'
 
         describe '#database', ->
-            it "should instantiate a new Drowsy.Database with the given name", ->
+            it "should return a new Drowsy.Database object with the given name", ->
                 db = @server.database(TEST_DB)
 
                 db.should.be.an.instanceOf Drowsy.Database
@@ -64,7 +64,7 @@ describe 'Drowsy', ->
                 db.url.should.match new RegExp("#{TEST_DB}$")
 
         describe '#databases', ->
-            it "should retrieve and instanitate a list of all databases on the remote server", (done) ->
+            it "should retrieve a list of all databases from the remote server as Drowsy.Database objects", (done) ->
                 @server.databases (dbs) ->
                     dbs[0].should.be.an.instanceOf Drowsy.Database
                     dbs[0].name.should.not.be.empty

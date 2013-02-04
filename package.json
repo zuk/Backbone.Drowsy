@@ -22,7 +22,7 @@
   },
   "analyze": false,
   "optionalDependencies": {
-    "ws" : "*"
+    "faye" : "*"
   },
   "devDependencies": {
     "coffee-script" : "*",

@@ -4,7 +4,7 @@ if window?
     _ = window._
     Backbone = window.Backbone
     Drowsy = window.Drowsy
-    WebSocket = window.WebSocket
+    Faye = window.Faye
 else
     # we're running in node
     $ = require 'jquery'
@@ -12,7 +12,7 @@ else
     Backbone = require 'backbone'
     Backbone.$ = $
     {Drowsy} = require './backbone.drowsy'
-    WebSocket = require 'ws'
+    Faye = require 'faye'
 
 
 # calls the given val if it's a function, or just returns it as is otherwise
@@ -23,39 +23,45 @@ readVal = (context, val) ->
         val
 
 class Wakeful
-    @clientId: Drowsy.generateMongoObjectId()
+    # A list of all Faye.Subscriptions crated by Wakeful objects.
+    # We keep this list in order to close all subs at the end of each
+    # test/spec.
+    @subs: []
 
     @sync: (method, obj, options) ->
         deferredSync = $.Deferred()
 
+        changed = obj.changed
+
         Backbone.sync(method, obj, options).done ->
             # TODO: figure out how to support delete
-            data = obj.toJSON()
-            if method in ['create','update','patch']
-                obj.broadcast(method, data, 
-                    options.origin || obj.wid || obj.defaultWid())
+            switch method
+                when 'create','update'
+                    data = obj.toJSON()
+                    obj.broadcast(method, data)
+                when 'patch'
+                    obj.broadcast(method, changed)
 
+            # FIXME: maybe don't resolve until .broadcast() resolves?
             deferredSync.resolve()
 
         return deferredSync
 
-    # can't allow more than one WebSocket per scheme:host:port
-    @websockets: {}
 
-    @subs: {}
+    @wake: (obj, fayeUrl, options = {}) ->
 
-    @wake: (obj, websocketUrl) ->
-
-        deferredConnection = $.Deferred()
-
-        throw new Error("Must provide a websocketUrl") unless websocketUrl?
+        throw new Error("Must provide a fayeUrl") unless fayeUrl?
         
-        obj.websocketUrl = websocketUrl
-
+        obj.fayeUrl = fayeUrl
+       
         obj.broadcastEchoQueue = []
 
+        obj.faye = new Faye.Client(fayeUrl)
+
+        obj.sync = Wakeful.sync
+
         obj = _.extend obj,
-            resourceUrl: ->
+            subscriptionUrl: ->
                 drowsyUrl = readVal(this, @url)
                 rx = new RegExp("[a-z]+://[^/]+/?/(\\w+)/(\\w+)(?:/([0-9a-f]{24}))?")
                 [url, db, coll, id] = drowsyUrl.match(rx)
@@ -63,151 +69,120 @@ class Wakeful
                 if id?
                     "/#{db}/#{coll}/#{id}"
                 else
-                    "/#{db}/#{coll}"
+                    "/#{db}/#{coll}/*"
 
             tunein: ->
                 # baseRx = "^wss?://[^/]+"
                 # fullRx = "#{baseRx}/\\w+/\\w+(/[0-9a-f]+)?"
-                # if websocketUrl.match(new RegExp("#{baseRx}/?$"))
-                #     @websocketUrl = readVal(this, @url).replace(new RegExp("[a-z]+://[^/]+/?"), websocketUrl+"/")
-                # else if websocketUrl.match(new RegExp(fullRx))
-                #     @websocketUrl = websocketUrl
+                # if fayeUrl.match(new RegExp("#{baseRx}/?$"))
+                #     @fayeUrl = readVal(this, @url).replace(new RegExp("[a-z]+://[^/]+/?"), fayeUrl+"/")
+                # else if fayeUrl.match(new RegExp(fullRx))
+                #     @fayeUrl = fayeUrl
                 # else
-                #     console.error websocketUrl, "is not a valid WakefulWeasel WebSocket URL!"
+                #     console.error fayeUrl, "is not a valid WakefulWeasel WebSocket URL!"
                 #     throw "Invalid WakefulWeasel WebSocket URL!"
-                
 
                 deferredSub = $.Deferred()
 
-                sendSubRequest = =>
-                    resUrl = @resourceUrl()
+                @sub = @faye.subscribe @subscriptionUrl(), _.bind(@receiveBroadcast, this)
 
-                    req = 
-                        type: 'SUBSCRIBE'
-                        url: resUrl
-                        cid: Wakeful.clientId
-                    
-                    @websocket.send JSON.stringify(req)
-
-                    # TODO: might want to get some sort of ackwnoledgement from weasel
-                    Wakeful.subs[resUrl] ?= []
-                    Wakeful.subs[resUrl].push(this)
-
-                    @trigger 'wakeful:subscription', req
+                @sub.callback ->
                     deferredSub.resolve()
+                @sub.errback (err) -> 
+                    deferredSub.reject(err)
 
-                switch @websocket.readyState
-                    when WebSocket.OPEN
-                        sendSubRequest()
-                    when WebSocket.CONNECTING
-                        @websocket.addEventListener('open', sendSubRequest)
-                    when WebSocket.CLOSED
-                        @websocket.open()
-                        @websocket.addEventListener('open', sendSubRequest)
-                    when WebSocket.CLOSING
-                        console.warn "WebSocket(#{@websocket.URL}) is closing... Cannot send request!"
-                    else
-                        console.error "WebSocket(#{@websocket.URL}) is in a weird state... Cannot send request!", @websocket.readyState
+                Wakeful.subs.push @sub
 
                 return deferredSub
 
-            broadcast: (action, data) =>
+            tuneout: ->
+                sub.cancel()
+                delete @sub
+
+            broadcast: (action, data) ->
                 deferredPub = $.Deferred()
 
-                send = =>
-                    req = 
-                        type: 'PUBLISH'
-                        action: action 
-                        data: data
-                        url: readVal(this, @url)
+                # bid = broadcast id
+                # just using the Mongo ObjectId as a pseudo-unique string; 
+                # it has nothing to do with MongoDB here
+                bid = Drowsy.generateMongoObjectId()
+
+                bcast = 
+                    action: action
+                    data: data
+                    bid: bid
                     
-                    @broadcastEchoQueue.push(deferredPub)
+                @broadcastEchoQueue.push(deferredPub)
 
-                    @websocket.send JSON.stringify(req)
-                    @trigger 'wakeful:broadcast:sent', obj, req
-                    deferredPub.notify('sent')
+                pub = @faye.publish @subscriptionUrl(), bcast
+                
+                pub.callback =>
+                    # NOTE: Usually this will get executed AFTER deferredPub.
+                    #       ... not sure why, but Faye seems to execute this callback
+                    #       some time after broadcasting the pub.
+                    #       As a consequence, a .progress() handler bound to
+                    #       deferredPub doesn't normally get triggered, since
+                    #       it will resolve first.
+                    @trigger 'wakeful:broadcast:sent', bcast
+                    deferredPub.notify 'sent'
 
-                switch @websocket.readyState
-                    when WebSocket.OPEN
-                        send()
-                    when WebSocket.CONNECTING
-                        @websocket.onopen = send
-                    when WebSocket.CLOSED, WebSocket.CLOSING
-                        console.warn "WebSocket(#{@websocket.URL}) is closing or closed... Cannot send request!"
-                    else
-                        console.error "WebSocket(#{@websocket.URL}) is in a weird state... Cannot send request!", @websocket.readyState
+                pub.errback (err) =>
+                    console.warn "Broadcast ##{bid} failed!", err, bcast
+                    @trigger 'wakeful:broadcast:error', bcast, err
+                    deferredPub.reject err
+
+                deferredPub.pub = pub
+                deferredPub.bid = bid
 
                 return deferredPub
 
-        if Wakeful.websockets[websocketUrl]?
-            obj.websocket = Wakeful.websockets[websocketUrl]
-        else
-            websocket = new WebSocket(websocketUrl)
 
-            obj.websocket = websocket
-            Wakeful.websockets[websocketUrl] = websocket
+            receiveBroadcast: (bcast) -> 
+                @trigger 'wakeful:broadcast:received', bcast
 
-            # like .close(), but returns a deferred that resolves only 
-            # once we're definitely closed
-            websocket.ensuredClose = ->
-                deferredClose = $.Deferred()
-                if @readyState is WebSocket.CLOSED
-                    deferredClose.resolve()
-                else
-                    onclose = (ev) =>
-                        @removeEventListener 'close', onclose
-                        deferredClose.resolve()
-                    @addEventListener 'close', onclose
-                    @close() if @readyState is WebSocket.OPEN
+                echoOf = _.find @broadcastEchoQueue, (defPub) -> defPub.bid is bcast.bid
+                
+                if echoOf?
+                    echoIndex = _.indexOf @broadcastEchoQueue, echoOf
+                    @broadcastEchoQueue.splice(echoIndex, 1) # remove echoOf
+                    echoOf.resolve()
 
-                return deferredClose
-
-            websocket.onmessage = (ev) =>
-                # TODO: handle parse error
-                bcast = JSON.parse(ev.data)
-
-                for subObj in Wakeful.subs[bcast.url]
-                    subObj.trigger 'wakeful:broadcast:received', bcast
-
-                    echoOf = _.find subObj.broadcastEchoQueue, (b) -> b.bid is bcast.bid
-                    
-                    if echoOf?
-                        echoIndex = _.indexOf subObj.broadcastEchoQueue, echoOf
-                        subObj.broadcastEchoQueue.splice(echoIndex, 1) # remove echoOf
-                        echoOf.resolve()
-
-                    if bcast.action in ['update','patch','create']
+                switch bcast.action
+                    when 'update','patch','create'
                         # TODO: do we need to handle 'patch' differently from 'update'?
                         #       ... probably yes, at least for nested objects
-                        subObj.set bcast.data
+                        if @set?
+                            @set bcast.data
+                        else
+                            @update(bcast.data, remove: false)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 
-        if obj.websocket.readyState is WebSocket.OPEN
-            console.log "resolving right away"
-            deferredConnection.resolve()
-        else
-            obj.websocket.addEventListener 'open', (ev) ->
-                deferredConnection.resolve()
-                obj.websocket.removeEventListener 'open', this
-            obj.websocket.addEventListener 'error', (ev) ->
-                console.error ev
-                deferredConnection.reject(ev)
-                obj.websocket.removeEventListener 'error', this
-            obj.websocket.open()
+        unless obj.add? # FIXME: crappy duck-typing test to see if this is a Document
+            
+            _set = obj.set
 
-        obj.websocket.addEventListener 'close', (ev) ->
-            console.warn "Wakeful WebSocket closed for", obj.resourceUrl(), ev
-            obj.websocket.removeEventListener('close')
-            #@trigger 'wakeful:disconnected', obj, ev
+            obj.set = (key, val, options) ->
+                ret = _set.apply(@, arguments)
 
-        # obj.websocket.addEventListener 'error', (ev) ->
-        #     console.error "Wakeful WebSocket error for", obj.resourceUrl(), ev
-        #     #@trigger 'wakeful:error', obj, ev
+                if !options? and typeof val is 'object'
+                    options = val
 
-        obj.sync = Wakeful.sync
+                unless options?
+                    return ret
 
-        return deferredConnection
+                if options.broadcast
+                    if typeof key is 'object'
+                        attrs = key
+                    else 
+                        attrs = {}
+                        attrs[key] = val
+
+                    @broadcast 'patch', attrs
+
+
+        unless options.tunein is false
+            obj.tunein()
 
 root = exports ? this
 root.Wakeful = Wakeful

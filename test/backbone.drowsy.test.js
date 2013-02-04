@@ -63,7 +63,7 @@
         });
       });
       describe('#database', function() {
-        return it("should instantiate a new Drowsy.Database with the given name", function() {
+        return it("should return a new Drowsy.Database object with the given name", function() {
           var db;
           db = this.server.database(TEST_DB);
           db.should.be.an.instanceOf(Drowsy.Database);
@@ -73,7 +73,7 @@
         });
       });
       return describe('#databases', function() {
-        return it("should retrieve and instanitate a list of all databases on the remote server", function(done) {
+        return it("should retrieve a list of all databases from the remote server as Drowsy.Database objects", function(done) {
           return this.server.databases(function(dbs) {
             dbs[0].should.be.an.instanceOf(Drowsy.Database);
             dbs[0].name.should.not.be.empty;
