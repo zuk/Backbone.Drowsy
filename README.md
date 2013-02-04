@@ -77,6 +77,38 @@ or [Zepto](http://zeptojs.com/#ajax), dependin on which Backbone sync backend yo
  using.
 
 
+Automatically pushing state changes through WakefulWeasel/Faye
+--------------------------------------------------------------
+
+Backbone.Drowsy can automatically broadcast changes to Documents and Collections
+through WakefulWeasel (i.e. using (Faye)[http://faye.jcoglan.com/]). To enable
+Wakeful functionality, load the `wakeful.js` script:
+
+```html
+<script src="wakeful.js"></script>
+```
+
+Then call the `Wakeful.wake()` method on a `Drowsy.Document` or `Drowsy.Collection` instance, like so:
+
+```js
+var doc = new MyModel();
+
+var weaselUrl = "http://localhost:7777/faye";
+
+Wakeful.wake(doc, weaselUrl);
+```
+
+`.wake()` imbues the Document or Collection with special `Backbone.sync`
+behaviour that automatically broadcasts changes to a Document or Collection 
+to all other Documents or Collections using that URL.
+
+For example, calling `doc.save()` would automatically push `doc`'s state to
+any other doc with the same URL (i.e. to other browsers/clients).
+
+**TODO: write some more usage examples**
+
+In the meantime, see https://github.com/zuk/Backbone.Drowsy/blob/master/test/wakeful.test.coffee#L320
+
 Browser or Node.js?
 -------------------
 
