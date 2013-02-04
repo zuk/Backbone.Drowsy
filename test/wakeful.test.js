@@ -376,7 +376,7 @@
           });
         });
       });
-      return it("should sync an update from a Drowsy.Document to a Drowsy.Collection", function(done) {
+      it("should sync an update from a Drowsy.Document to a Drowsy.Collection", function(done) {
         var coll1, doc1;
         doc1 = new this.TestDoc();
         coll1 = new this.TestColl();
@@ -397,6 +397,19 @@
               return doc1.save();
             });
           });
+        });
+      });
+      return it("should trigger an 'add' event on a Drowsy.Collection when a new Drowsy.Document is created in it", function(done) {
+        var coll1, doc1, dsub1, dsub2;
+        doc1 = new this.TestDoc();
+        coll1 = new this.TestColl();
+        dsub1 = Wakeful.wake(doc1, FAYE_URL);
+        dsub2 = Wakeful.wake(coll1, FAYE_URL);
+        return $.when(dsub1, dsub2).done(function() {
+          coll1.on('add', function() {
+            return done();
+          });
+          return doc1.save();
         });
       });
     });

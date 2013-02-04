@@ -410,7 +410,20 @@ describe 'Wakeful', ->
 
                         doc1.save()
 
-                        
+        it "should trigger an 'add' event on a Drowsy.Collection when a new Drowsy.Document is created in it", (done) ->
+            doc1 = new @TestDoc()
+            coll1 = new @TestColl()
+
+            dsub1 = Wakeful.wake doc1, FAYE_URL
+            dsub2 = Wakeful.wake coll1, FAYE_URL
+
+            $.when(dsub1, dsub2).done ->
+
+                coll1.on 'add', ->
+                    done()
+
+                doc1.save()
+                
 
 
 
