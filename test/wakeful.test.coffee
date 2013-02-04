@@ -36,7 +36,7 @@ if TEST_USERNAME? and TEST_PASSWORD?
                 'Basic ' + btoa(TEST_USERNAME+':'+TEST_PASSWORD);
 
 describe 'Wakeful', ->
-    @timeout 4000
+    @timeout 3000
     @slow 1000
 
     before ->
@@ -45,51 +45,155 @@ describe 'Wakeful', ->
         class TestDoc extends @db.Document(TEST_COLLECTION)
         @TestDoc = TestDoc
 
+    beforeEach ->
+        Wakeful.websockets = {}
+        Wakeful.subs = {}
+
+    afterEach (done) ->
+        dfs = []
+        for url,ws of Wakeful.websockets
+            dfs.push ws.ensuredClose()
+
+        $.when.apply($, dfs).done ->
+            done()
+
 
     describe ".wake", ->
-        it 'should enhance Drowsy.Document with wakeful functionality', ->
+        it 'should enhance Drowsy.Document with wakeful functionality', (done) ->
             doc = new @TestDoc()
 
-            Wakeful.wake doc, WAKEFUL_URL
+            (Wakeful.wake doc, WAKEFUL_URL).done ->
 
-            doc.should.have.property 'connect'
-            doc.connect.should.be.a 'function'
+                doc.should.have.property 'tunein'
+                doc.tunein.should.be.a 'function'
 
-            doc.should.have.property 'disconnect'
-            doc.disconnect.should.be.a 'function'
+                doc.should.have.property 'broadcast'
+                doc.broadcast.should.be.a 'function'
 
-        describe "#connect", ->
-            it 'should return a $.Deferred', ->
+                done()
+
+        it 'should not create more than one WebSocket per ws URL', (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+            doc3 = new @TestDoc()
+            doc4 = new @TestDoc()
+
+            df1 = Wakeful.wake doc1, WAKEFUL_URL
+            df2 = Wakeful.wake doc2, WAKEFUL_URL
+            df3 = Wakeful.wake doc3, WAKEFUL_URL
+
+            $.when(df1,df2,df3).done ->
+                Object.keys(Wakeful.websockets).length.should.equal 1
+
+                doc1.websocket.should.equal doc2.websocket
+                doc2.websocket.should.equal doc3.websocket
+
+                df4 = Wakeful.wake doc4, WAKEFUL_URL+"/foo"
+
+                df4.done ->
+                    Object.keys(Wakeful.websockets).length.should.equal 2
+                    doc1.websocket.should.not.equal doc4.websocket
+                    done()
+
+        it 'should create websockets that support ensuredClose()', (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+            doc3 = new @TestDoc()
+
+            df1 = Wakeful.wake doc1, WAKEFUL_URL
+            df2 = Wakeful.wake doc2, WAKEFUL_URL
+            df3 = Wakeful.wake doc3, WAKEFUL_URL
+
+            $.when(df1,df2,df3).done ->
+                doc1.websocket.should.have.property 'ensuredClose'
+                doc2.websocket.should.have.property 'ensuredClose'
+                doc3.websocket.should.have.property 'ensuredClose'
+
+                doc1.websocket.ensuredClose().done ->
+                    doc1.websocket.readyState.should.equal WebSocket.CLOSED
+                    doc2.websocket.readyState.should.equal WebSocket.CLOSED
+                    doc3.websocket.readyState.should.equal WebSocket.CLOSED
+                    done()
+
+
+        describe "#tunein", ->
+            it 'should return a $.Deferred', (done) ->
+                console.log 'should return a $.Deferred'
+                doc = new @TestDoc()
+
+                (Wakeful.wake doc, WAKEFUL_URL).done ->
+                    sub = doc.tunein()
+
+                    # duck typing check
+                    sub.should.have.property 'resolve'
+                    sub.resolve.should.be.a 'function'
+
+                    sub.done -> done()
+
+            it 'should make sure a WebSocket is open', (done) ->
+                console.log 'should make sure a WebSocket is open'
                 doc = new @TestDoc()
 
                 Wakeful.wake doc, WAKEFUL_URL
+                
+                sub = doc.tunein()
 
-                conn = doc.connect()
+                sub.always ->
+                    doc.websocket.readyState.should.equal WebSocket.OPEN
+                    done()
 
-                # doesn't work, do duck typing instead
-                #conn.should.be.an.instanceOf $.Deferred
-                conn.should.have.property 'resolve'
-                conn.resolve.should.be.a 'function'
-                conn.should.have.property 'reject'
-                conn.reject.should.be.a 'function'
-
-            it 'should trigger wakeful:open then wakeful:subscribed and then resolve', (done) ->
+            it 'should register a subscription with Wakeful', (done) ->
+                console.log 'should register a subscription with Wakeful'
                 doc = new @TestDoc()
 
                 Wakeful.wake doc, WAKEFUL_URL
+                
+                sub = doc.tunein()
 
-                conn = doc.connect()
+                sub.done ->
+                    Wakeful.subs[doc.resourceUrl()].length.should.equal 1
+                    Wakeful.subs[doc.resourceUrl()].should.include doc
+                    done()
 
+            it 'should allow multiple subscriptions for the same URL', (done) ->
+                docA = new @TestDoc()
+                docB = new @TestDoc()
+                docB.set('_id', docA.id)
 
-                doc.socket.should.be.an.instanceOf WebSocket
-                conn.state().should.equal 'pending'
+                Wakeful.wake docA, WAKEFUL_URL
+                Wakeful.wake docB, WAKEFUL_URL 
 
-                doc.on 'wakeful:open', ->
-                    doc.socket.readyState.should.equal WebSocket.OPEN
-                    conn.state().should.equal 'pending'
-                    doc.on 'wakeful:subscribed', ->
-                        conn.done ->
-                            done()
+                subA = docA.tunein()
+                subB = docB.tunein()
+                console.log "A",docA.resourceUrl()
+                console.log "B",docB.resourceUrl()
+
+                subA.done -> console.log "A", "DONE"
+                subB.done -> console.log "B", "DONE"
+
+                $.when(subA, subB).done ->
+                    Wakeful.subs[docA.resourceUrl()].length is 2
+                    done()
+
+            it 'should trigger wakeful:subscription and then resolve', (done) ->
+                doc1 = new @TestDoc()
+                doc2 = new @TestDoc()
+
+                Wakeful.wake doc1, WAKEFUL_URL
+                Wakeful.wake doc2, WAKEFUL_URL 
+
+                subA = doc1.tunein()
+                subB = doc2.tunein()
+                console.log "A",doc1.resourceUrl()
+                console.log "B",doc2.resourceUrl()
+
+                subA.done -> console.log "A", "DONE"
+                subB.done -> console.log "B", "DONE"
+
+                $.when(subA, subB).done ->
+                    Wakeful.subs[doc1.resourceUrl()].length is 2
+                    done()
+
 
 
         describe "#broadcast", ->
@@ -170,9 +274,9 @@ describe 'Wakeful', ->
                         sub1 = false
                         sub2 = false
 
-                        doc1.on 'wakeful:subscribed', ->
+                        doc1.on 'wakeful:tuneind', ->
                             sub1 = true
-                        doc2.on 'wakeful:subscribed', ->
+                        doc2.on 'wakeful:tuneind', ->
                             sub2 = true
 
                         conn1.state().should.equal 'pending'

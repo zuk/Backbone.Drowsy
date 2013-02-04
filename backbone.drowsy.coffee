@@ -17,7 +17,7 @@ else
 class Drowsy
     # TODO: should machineid be tied to Drowsy.Server rather than the client?
     @generateMongoObjectId: ->
-        new Drowsy.ObjectId()
+        (new Drowsy.ObjectId()).toString()
 
 
 class Drowsy.Server

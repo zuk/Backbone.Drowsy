@@ -23,7 +23,7 @@
     function Drowsy() {}
 
     Drowsy.generateMongoObjectId = function() {
-      return new Drowsy.ObjectId();
+      return (new Drowsy.ObjectId()).toString();
     };
 
     return Drowsy;

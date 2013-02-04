@@ -43,7 +43,7 @@
   }
 
   describe('Wakeful', function() {
-    this.timeout(4000);
+    this.timeout(3000);
     this.slow(1000);
     before(function() {
       var TestDoc;
@@ -62,42 +62,155 @@
       })(this.db.Document(TEST_COLLECTION));
       return this.TestDoc = TestDoc;
     });
+    beforeEach(function() {
+      Wakeful.websockets = {};
+      return Wakeful.subs = {};
+    });
+    afterEach(function(done) {
+      var dfs, url, ws, _ref;
+      dfs = [];
+      _ref = Wakeful.websockets;
+      for (url in _ref) {
+        ws = _ref[url];
+        dfs.push(ws.ensuredClose());
+      }
+      return $.when.apply($, dfs).done(function() {
+        return done();
+      });
+    });
     return describe(".wake", function() {
-      it('should enhance Drowsy.Document with wakeful functionality', function() {
+      it('should enhance Drowsy.Document with wakeful functionality', function(done) {
         var doc;
         doc = new this.TestDoc();
-        Wakeful.wake(doc, WAKEFUL_URL);
-        doc.should.have.property('connect');
-        doc.connect.should.be.a('function');
-        doc.should.have.property('disconnect');
-        return doc.disconnect.should.be.a('function');
-      });
-      describe("#connect", function() {
-        it('should return a $.Deferred', function() {
-          var conn, doc;
-          doc = new this.TestDoc();
-          Wakeful.wake(doc, WAKEFUL_URL);
-          conn = doc.connect();
-          conn.should.have.property('resolve');
-          conn.resolve.should.be.a('function');
-          conn.should.have.property('reject');
-          return conn.reject.should.be.a('function');
+        return (Wakeful.wake(doc, WAKEFUL_URL)).done(function() {
+          doc.should.have.property('tunein');
+          doc.tunein.should.be.a('function');
+          doc.should.have.property('broadcast');
+          doc.broadcast.should.be.a('function');
+          return done();
         });
-        return it('should trigger wakeful:open then wakeful:subscribed and then resolve', function(done) {
-          var conn, doc;
+      });
+      it('should not create more than one WebSocket per ws URL', function(done) {
+        var df1, df2, df3, doc1, doc2, doc3, doc4;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        doc3 = new this.TestDoc();
+        doc4 = new this.TestDoc();
+        df1 = Wakeful.wake(doc1, WAKEFUL_URL);
+        df2 = Wakeful.wake(doc2, WAKEFUL_URL);
+        df3 = Wakeful.wake(doc3, WAKEFUL_URL);
+        return $.when(df1, df2, df3).done(function() {
+          var df4;
+          Object.keys(Wakeful.websockets).length.should.equal(1);
+          doc1.websocket.should.equal(doc2.websocket);
+          doc2.websocket.should.equal(doc3.websocket);
+          df4 = Wakeful.wake(doc4, WAKEFUL_URL + "/foo");
+          return df4.done(function() {
+            Object.keys(Wakeful.websockets).length.should.equal(2);
+            doc1.websocket.should.not.equal(doc4.websocket);
+            return done();
+          });
+        });
+      });
+      it('should create websockets that support ensuredClose()', function(done) {
+        var df1, df2, df3, doc1, doc2, doc3;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        doc3 = new this.TestDoc();
+        df1 = Wakeful.wake(doc1, WAKEFUL_URL);
+        df2 = Wakeful.wake(doc2, WAKEFUL_URL);
+        df3 = Wakeful.wake(doc3, WAKEFUL_URL);
+        return $.when(df1, df2, df3).done(function() {
+          doc1.websocket.should.have.property('ensuredClose');
+          doc2.websocket.should.have.property('ensuredClose');
+          doc3.websocket.should.have.property('ensuredClose');
+          return doc1.websocket.ensuredClose().done(function() {
+            doc1.websocket.readyState.should.equal(WebSocket.CLOSED);
+            doc2.websocket.readyState.should.equal(WebSocket.CLOSED);
+            doc3.websocket.readyState.should.equal(WebSocket.CLOSED);
+            return done();
+          });
+        });
+      });
+      describe("#tunein", function() {
+        it('should return a $.Deferred', function(done) {
+          var doc;
+          console.log('should return a $.Deferred');
+          doc = new this.TestDoc();
+          return (Wakeful.wake(doc, WAKEFUL_URL)).done(function() {
+            var sub;
+            sub = doc.tunein();
+            sub.should.have.property('resolve');
+            sub.resolve.should.be.a('function');
+            return sub.done(function() {
+              return done();
+            });
+          });
+        });
+        it('should make sure a WebSocket is open', function(done) {
+          var doc, sub;
+          console.log('should make sure a WebSocket is open');
           doc = new this.TestDoc();
           Wakeful.wake(doc, WAKEFUL_URL);
-          conn = doc.connect();
-          doc.socket.should.be.an.instanceOf(WebSocket);
-          conn.state().should.equal('pending');
-          return doc.on('wakeful:open', function() {
-            doc.socket.readyState.should.equal(WebSocket.OPEN);
-            conn.state().should.equal('pending');
-            return doc.on('wakeful:subscribed', function() {
-              return conn.done(function() {
-                return done();
-              });
-            });
+          sub = doc.tunein();
+          return sub.always(function() {
+            doc.websocket.readyState.should.equal(WebSocket.OPEN);
+            return done();
+          });
+        });
+        it('should register a subscription with Wakeful', function(done) {
+          var doc, sub;
+          console.log('should register a subscription with Wakeful');
+          doc = new this.TestDoc();
+          Wakeful.wake(doc, WAKEFUL_URL);
+          sub = doc.tunein();
+          return sub.done(function() {
+            Wakeful.subs[doc.resourceUrl()].length.should.equal(1);
+            Wakeful.subs[doc.resourceUrl()].should.include(doc);
+            return done();
+          });
+        });
+        it('should allow multiple subscriptions for the same URL', function(done) {
+          var docA, docB, subA, subB;
+          docA = new this.TestDoc();
+          docB = new this.TestDoc();
+          docB.set('_id', docA.id);
+          Wakeful.wake(docA, WAKEFUL_URL);
+          Wakeful.wake(docB, WAKEFUL_URL);
+          subA = docA.tunein();
+          subB = docB.tunein();
+          console.log("A", docA.resourceUrl());
+          console.log("B", docB.resourceUrl());
+          subA.done(function() {
+            return console.log("A", "DONE");
+          });
+          subB.done(function() {
+            return console.log("B", "DONE");
+          });
+          return $.when(subA, subB).done(function() {
+            Wakeful.subs[docA.resourceUrl()].length === 2;
+            return done();
+          });
+        });
+        return it('should trigger wakeful:subscription and then resolve', function(done) {
+          var doc1, doc2, subA, subB;
+          doc1 = new this.TestDoc();
+          doc2 = new this.TestDoc();
+          Wakeful.wake(doc1, WAKEFUL_URL);
+          Wakeful.wake(doc2, WAKEFUL_URL);
+          subA = doc1.tunein();
+          subB = doc2.tunein();
+          console.log("A", doc1.resourceUrl());
+          console.log("B", doc2.resourceUrl());
+          subA.done(function() {
+            return console.log("A", "DONE");
+          });
+          subB.done(function() {
+            return console.log("B", "DONE");
+          });
+          return $.when(subA, subB).done(function() {
+            Wakeful.subs[doc1.resourceUrl()].length === 2;
+            return done();
           });
         });
       });
@@ -118,10 +231,10 @@
               conn2 = doc2.connect();
               sub1 = false;
               sub2 = false;
-              doc1.on('wakeful:subscribed', function() {
+              doc1.on('wakeful:tuneind', function() {
                 return sub1 = true;
               });
-              doc2.on('wakeful:subscribed', function() {
+              doc2.on('wakeful:tuneind', function() {
                 return sub2 = true;
               });
               conn1.state().should.equal('pending');
