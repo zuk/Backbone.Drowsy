@@ -81,7 +81,7 @@ Automatically pushing state changes through WakefulWeasel/Faye
 --------------------------------------------------------------
 
 Backbone.Drowsy can automatically broadcast changes to Documents and Collections
-through WakefulWeasel (i.e. using (Faye)[http://faye.jcoglan.com/]). To enable
+through WakefulWeasel (i.e. using [Faye](http://faye.jcoglan.com/)). To enable
 Wakeful functionality, load the `wakeful.js` script:
 
 ```html
