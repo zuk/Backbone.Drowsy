@@ -126,6 +126,16 @@ You should now be able to run all tests in `test/`:
 
 `cake test`
 
+To run in the browser:
+
+```
+ruby -r webrick -e "s = WEBrick::HTTPServer.new(:Port => 8000, :DocumentRoot => Dir.pwd); trap('INT') { s.shutdown }; s.start"
+```
+
+Then point your browser to http://localhost:8000/test.
+
+To run the Wakeful specs you must have WakefulWeasel running on http://localhost:7777/faye (or  specify a different Weasel URL by 
+changing the WEASEL_URL value in index.html).
 
 
 
