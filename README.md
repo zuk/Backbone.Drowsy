@@ -77,8 +77,8 @@ or [Zepto](http://zeptojs.com/#ajax), dependin on which Backbone sync backend yo
  using.
 
 
-Automatically pushing state changes through WakefulWeasel/Faye
---------------------------------------------------------------
+Automatically Broadcasting Changes
+----------------------------------
 
 Backbone.Drowsy can automatically broadcast changes to Documents and Collections
 through WakefulWeasel (i.e. using [Faye](http://faye.jcoglan.com/)). To enable
