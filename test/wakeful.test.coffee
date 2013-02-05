@@ -18,7 +18,7 @@ else
     WebSocket = require 'ws'
 
 DROWSY_URL = "http://localhost:9292"
-FAYE_URL = "http://localhost:7777/faye" unless FAYE_URL?
+WEASEL_URL = "http://localhost:7777/faye" unless WEASEL_URL?
 TEST_DB = 'drowsy_test'
 TEST_COLLECTION = 'tests'
 
@@ -58,7 +58,7 @@ describe 'Wakeful', ->
         it 'should enhance Drowsy.Document with wakeful functionality', ->
             doc = new @TestDoc()
 
-            Wakeful.wake doc, FAYE_URL
+            Wakeful.wake doc, WEASEL_URL
 
             doc.should.have.property 'tunein'
             doc.tunein.should.be.a 'function'
@@ -69,7 +69,7 @@ describe 'Wakeful', ->
         it 'should automatically tunein the object', (done) ->
             doc = new @TestDoc()
 
-            dsub = Wakeful.wake doc, FAYE_URL
+            dsub = Wakeful.wake doc, WEASEL_URL
 
             dsub.should.have.property 'resolve'
             dsub.resolve.should.be.a 'function'
@@ -82,7 +82,7 @@ describe 'Wakeful', ->
             it 'should return a $.Deferred', (done) ->
                 doc = new @TestDoc()
 
-                Wakeful.wake doc, FAYE_URL, tunein: false
+                Wakeful.wake doc, WEASEL_URL, tunein: false
 
                 dsub = doc.tunein()
 
@@ -98,10 +98,10 @@ describe 'Wakeful', ->
                 coll1 = new @TestColl()
                 coll2 = new @TestColl()
 
-                Wakeful.wake doc1, FAYE_URL, tunein: false
-                Wakeful.wake doc2, FAYE_URL, tunein: false
-                Wakeful.wake coll1, FAYE_URL, tunein: false
-                Wakeful.wake coll2, FAYE_URL, tunein: false
+                Wakeful.wake doc1, WEASEL_URL, tunein: false
+                Wakeful.wake doc2, WEASEL_URL, tunein: false
+                Wakeful.wake coll1, WEASEL_URL, tunein: false
+                Wakeful.wake coll2, WEASEL_URL, tunein: false
                 
                 dsubDoc1 = doc1.tunein()
                 dsubDoc2 = doc2.tunein()
@@ -131,7 +131,7 @@ describe 'Wakeful', ->
             it "should notify when sent, and resolve when echoed", (done) ->
                 doc = new @TestDoc()
                 doc.save().done ->
-                    dsub = Wakeful.wake doc, FAYE_URL
+                    dsub = Wakeful.wake doc, WEASEL_URL
                     dsub.done ->
                         rand = Math.random()
                         doc.set 'foo', rand
@@ -155,7 +155,7 @@ describe 'Wakeful', ->
             # it "should push onto the broadcastEchoQueue and then pop when echo received", (done) ->
             #     doc = new @TestDoc()
             #     doc.save().done ->
-            #         Wakeful.wake doc, FAYE_URL
+            #         Wakeful.wake doc, WEASEL_URL
             #         doc.connect().done ->
             #             rand = Math.random()
             #             doc.set 'foo', rand
@@ -200,8 +200,8 @@ describe 'Wakeful', ->
                     doc2.url().should.equal doc1.url()
                     
                     doc2.save().done ->
-                        dsubA = Wakeful.wake doc1, FAYE_URL
-                        dsubB = Wakeful.wake doc2, FAYE_URL
+                        dsubA = Wakeful.wake doc1, WEASEL_URL
+                        dsubB = Wakeful.wake doc2, WEASEL_URL
 
                         dsubA.state().should.equal 'pending'
                         dsubB.state().should.equal 'pending'
@@ -227,8 +227,8 @@ describe 'Wakeful', ->
 
                 doc1.save().done ->
                         
-                    dsubA = Wakeful.wake doc1, FAYE_URL
-                    dsubB = Wakeful.wake coll1, FAYE_URL
+                    dsubA = Wakeful.wake doc1, WEASEL_URL
+                    dsubB = Wakeful.wake coll1, WEASEL_URL
 
                     dsubA.state().should.equal 'pending'
                     dsubB.state().should.equal 'pending'
@@ -255,7 +255,7 @@ describe 'Wakeful', ->
         it "should return a deferred when the broadcast flag is set",  ->
             doc1 = new @TestDoc()
 
-            dsub1 = Wakeful.wake doc1, FAYE_URL
+            dsub1 = Wakeful.wake doc1, WEASEL_URL
 
             dsub1.done ->
                 rand = Math.random()
@@ -268,7 +268,7 @@ describe 'Wakeful', ->
         it "should broadcast the change as a patch when broadcast flag is set", (done) ->
             doc1 = new @TestDoc()
 
-            dsub1 = Wakeful.wake doc1, FAYE_URL
+            dsub1 = Wakeful.wake doc1, WEASEL_URL
 
             dsub1.done ->
                 rand = Math.random()
@@ -289,7 +289,7 @@ describe 'Wakeful', ->
 
             doc1.save().done ->
 
-                dsub1 = Wakeful.wake doc1, FAYE_URL
+                dsub1 = Wakeful.wake doc1, WEASEL_URL
 
                 dsub1.done ->
                     rand = Math.random()
@@ -306,7 +306,7 @@ describe 'Wakeful', ->
         it "should NOT broadcast the change if the broadcast flag was not set", (done) ->
             doc1 = new @TestDoc()
 
-            dsub1 = Wakeful.wake doc1, FAYE_URL
+            dsub1 = Wakeful.wake doc1, WEASEL_URL
 
             dsub1.done ->
                 rand = Math.random()
@@ -329,8 +329,8 @@ describe 'Wakeful', ->
                 doc2.fetch().done ->
                     doc1.toJSON().should.eql doc2.toJSON()
 
-                    dsub1 = Wakeful.wake doc1, FAYE_URL
-                    dsub2 = Wakeful.wake doc2, FAYE_URL
+                    dsub1 = Wakeful.wake doc1, WEASEL_URL
+                    dsub2 = Wakeful.wake doc2, WEASEL_URL
 
                     # this change will be reversed by the sync
                     doc2.set('bar', 'b')
@@ -358,8 +358,8 @@ describe 'Wakeful', ->
                 doc2.fetch().done ->
                     doc1.toJSON().should.eql doc2.toJSON()
 
-                    dsub1 = Wakeful.wake doc1, FAYE_URL
-                    dsub2 = Wakeful.wake doc2, FAYE_URL
+                    dsub1 = Wakeful.wake doc1, WEASEL_URL
+                    dsub2 = Wakeful.wake doc2, WEASEL_URL
 
                     # this change will be NOT be reversed by the sync
                     doc2.set('bar', 'b')
@@ -395,8 +395,8 @@ describe 'Wakeful', ->
 
                     coll1.get(doc1.id).toJSON().should.eql doc1.toJSON()
 
-                    dsub1 = Wakeful.wake doc1, FAYE_URL
-                    dsub2 = Wakeful.wake coll1, FAYE_URL
+                    dsub1 = Wakeful.wake doc1, WEASEL_URL
+                    dsub2 = Wakeful.wake coll1, WEASEL_URL
 
                     # when both have subscribed
                     $.when(dsub1, dsub2).done ->
@@ -414,8 +414,8 @@ describe 'Wakeful', ->
             doc1 = new @TestDoc()
             coll1 = new @TestColl()
 
-            dsub1 = Wakeful.wake doc1, FAYE_URL
-            dsub2 = Wakeful.wake coll1, FAYE_URL
+            dsub1 = Wakeful.wake doc1, WEASEL_URL
+            dsub2 = Wakeful.wake coll1, WEASEL_URL
 
             $.when(dsub1, dsub2).done ->
 
