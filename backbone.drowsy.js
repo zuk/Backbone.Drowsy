@@ -258,7 +258,7 @@
       for (key in obj) {
         val = obj[key];
         out[key] = parser(val);
-        if (typeof out[key] === 'object' && Object.keys(out[key]).length > 0) {
+        if (_.isObject(out[key]) && !_.isArray(out[key]) && Object.keys(out[key]).length > 0) {
           out[key] = this.parseObjectRecursively(out[key], parser);
         }
       }

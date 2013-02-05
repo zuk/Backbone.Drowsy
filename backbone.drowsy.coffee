@@ -132,7 +132,7 @@ class Drowsy.Document extends Backbone.Model
         out = {}
         for key,val of obj
             out[key] = parser(val)
-            if typeof out[key] is 'object' and 
+            if _.isObject(out[key]) and not _.isArray(out[key]) and 
                     # check that this is an object that can be iterated over (as opposed to something like a Date)
                     Object.keys(out[key]).length > 0 
                 out[key] = @parseObjectRecursively out[key], parser

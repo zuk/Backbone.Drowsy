@@ -168,6 +168,29 @@ describe 'Drowsy', ->
                 (parsed.date1 instanceof Date).should.be.true
                 parsed.meh.date2.getTime().should.equal (new Date("2013-01-24T02:01:35.151Z")).getTime()
 
+            it "should parse an array value as an array rather than an object", ->
+                data = JSON.parse '{
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, 
+                        "foo": "bar",
+                        "arr": [
+                            {"foo": "bar"},
+                            {"joo": "gar"}
+                        ],
+                        "obj": {
+                            "0": {"foo": "bar"},
+                            "1": {"joo": "gar"}
+                        }
+                    }'
+
+                doc = new Drowsy.Document()
+                parsed = doc.parse(data)
+
+                parsed.arr.should.be.an 'array'
+                parsed.arr[1].joo.should.equal 'gar'
+
+                parsed.obj.should.be.an 'object'
+                parsed.obj[1].joo.should.equal 'gar'
+
         describe "#toJSON", ->
             it "should NOT convert _id to {$oid: '...'}", -> # DrowsyDromedary doesn't expect _id to be specially formatted on input
                 doc = new Drowsy.Document()

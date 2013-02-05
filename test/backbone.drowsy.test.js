@@ -217,7 +217,7 @@
           parsed._id.should.equal("50f7875a1b85e10000000003");
           return parsed.foo.should.equal("bar");
         });
-        return it("should deal with ISODates encoded as {$date: '...'}", function() {
+        it("should deal with ISODates encoded as {$date: '...'}", function() {
           var data, doc, parsed;
           data = JSON.parse('{\
                         "_id": {"$oid": "50f7875a1b85e10000000003"}, \
@@ -236,6 +236,27 @@
           parsed.date1.getTime().should.equal((new Date("2013-01-17T05:08:42.537Z")).getTime());
           (parsed.date1 instanceof Date).should.be["true"];
           return parsed.meh.date2.getTime().should.equal((new Date("2013-01-24T02:01:35.151Z")).getTime());
+        });
+        return it("should parse an array value as an array rather than an object", function() {
+          var data, doc, parsed;
+          data = JSON.parse('{\
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, \
+                        "foo": "bar",\
+                        "arr": [\
+                            {"foo": "bar"},\
+                            {"joo": "gar"}\
+                        ],\
+                        "obj": {\
+                            "0": {"foo": "bar"},\
+                            "1": {"joo": "gar"}\
+                        }\
+                    }');
+          doc = new Drowsy.Document();
+          parsed = doc.parse(data);
+          parsed.arr.should.be.an('array');
+          parsed.arr[1].joo.should.equal('gar');
+          parsed.obj.should.be.an('object');
+          return parsed.obj[1].joo.should.equal('gar');
         });
       });
       describe("#toJSON", function() {
