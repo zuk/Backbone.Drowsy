@@ -151,7 +151,7 @@
         return it("should return a deferred and resolve to 'success' or 'already_exists'", function(done) {
           return this.db.createCollection(TEST_COLLECTION).always(function(result, xhr) {
             result.should.match(/success|already_exists/);
-            this["this"].state().should.equal('resolved');
+            this.state().should.equal('resolved');
             return done();
           });
         });

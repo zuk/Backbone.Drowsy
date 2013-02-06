@@ -99,17 +99,16 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
             type: 'POST'
             data: {collection: collectionName}
             complete: (xhr, status) ->
-                if after?
-                    console.log xhr.status
-                    if xhr.status is 304
-                        deferredCreate.resolve('already_exists', xhr)
-                        after('already_exists') if after?
-                    else if xhr.status is 201
-                        deferredCreate.resolve('created', xhr)
-                        after('created') if after?
-                    else
-                        deferredCreate.reject('failed', xhr)
-                        after('failed', xhr.status) if after?
+                console.log xhr.status
+                if xhr.status is 304
+                    deferredCreate.resolve('already_exists', xhr)
+                    after('already_exists') if after?
+                else if xhr.status is 201
+                    deferredCreate.resolve('created', xhr)
+                    after('created') if after?
+                else
+                    deferredCreate.reject('failed', xhr)
+                    after('failed', xhr.status) if after?
 
         return deferredCreate
 

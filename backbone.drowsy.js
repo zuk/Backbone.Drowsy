@@ -176,23 +176,21 @@
           collection: collectionName
         },
         complete: function(xhr, status) {
-          if (after != null) {
-            console.log(xhr.status);
-            if (xhr.status === 304) {
-              deferredCreate.resolve('already_exists', xhr);
-              if (after != null) {
-                return after('already_exists');
-              }
-            } else if (xhr.status === 201) {
-              deferredCreate.resolve('created', xhr);
-              if (after != null) {
-                return after('created');
-              }
-            } else {
-              deferredCreate.reject('failed', xhr);
-              if (after != null) {
-                return after('failed', xhr.status);
-              }
+          console.log(xhr.status);
+          if (xhr.status === 304) {
+            deferredCreate.resolve('already_exists', xhr);
+            if (after != null) {
+              return after('already_exists');
+            }
+          } else if (xhr.status === 201) {
+            deferredCreate.resolve('created', xhr);
+            if (after != null) {
+              return after('created');
+            }
+          } else {
+            deferredCreate.reject('failed', xhr);
+            if (after != null) {
+              return after('failed', xhr.status);
             }
           }
         }
