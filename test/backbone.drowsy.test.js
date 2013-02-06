@@ -144,13 +144,13 @@
       describe('#createCollection', function() {
         it("should create the given collection in this database", function(done) {
           return this.db.createCollection(TEST_COLLECTION, function(result) {
-            result.should.match(/success|already_exists/);
+            result.should.match(/created|already_exists/);
             return done();
           });
         });
-        return it("should return a deferred and resolve to 'success' or 'already_exists'", function(done) {
+        return it("should return a deferred and resolve to 'created' or 'already_exists'", function(done) {
           return this.db.createCollection(TEST_COLLECTION).always(function(result, xhr) {
-            result.should.match(/success|already_exists/);
+            result.should.match(/created|already_exists/);
             this.state().should.equal('resolved');
             return done();
           });

@@ -116,12 +116,12 @@ describe 'Drowsy', ->
         describe '#createCollection', ->
             it "should create the given collection in this database", (done) ->
                 @db.createCollection TEST_COLLECTION, (result) ->
-                    result.should.match /success|already_exists/
+                    result.should.match /created|already_exists/
                     done()
 
-            it "should return a deferred and resolve to 'success' or 'already_exists'", (done) ->
+            it "should return a deferred and resolve to 'created' or 'already_exists'", (done) ->
                 @db.createCollection(TEST_COLLECTION).always (result, xhr) ->
-                    result.should.match /success|already_exists/
+                    result.should.match /created|already_exists/
                     @state().should.equal 'resolved'
                     done()
 
