@@ -11,6 +11,8 @@
     Drowsy = window.Drowsy;
     Wakeful = window.Wakeful;
     WebSocket = window.WebSocket;
+    DROWSY_URL = window.DROWSY_URL;
+    WEASEL_URL = window.WEASEL_URL;
   } else {
     $ = require('jquery');
     _ = require('underscore');
@@ -19,12 +21,13 @@
     Drowsy = require('../backbone.drowsy').Drowsy;
     Wakeful = require('../wakeful').Wakeful;
     should = require('chai').should();
-    WebSocket = require('ws');
   }
 
-  DROWSY_URL = "http://localhost:9292";
+  if (DROWSY_URL == null) {
+    DROWSY_URL = "http://localhost:9292";
+  }
 
-  if (typeof WEASEL_URL === "undefined" || WEASEL_URL === null) {
+  if (WEASEL_URL == null) {
     WEASEL_URL = "http://localhost:7777/faye";
   }
 

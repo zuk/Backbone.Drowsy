@@ -15,7 +15,8 @@
   <script src="../node_modules/chai/chai.js"></script>
   <script src="../node_modules/mocha/mocha.js"></script>
   <script>
-    var WEASEL_URL = "http://localhost:7777/faye"
+    var DROWSY_URL = "http://drowsy.badger.encorelab.org"
+    var WEASEL_URL = "http://badger.encorelab.org:7777/faye"
 
     window.should = chai.should();
     mocha.setup('bdd');
@@ -24,7 +25,9 @@
 
   <script src="../backbone.drowsy.js"></script>
 
-  <script src="http://localhost:7777/faye/client.js"></script>
+	<script>
+		document.write('\x3Cscript src="'+WEASEL_URL+'/client.js">\x3C/script>');
+	</script>
   <script src="../wakeful.js"></script>
 
   <script src="backbone.drowsy.test.js"></script>

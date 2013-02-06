@@ -6,6 +6,8 @@ if window?
     Drowsy = window.Drowsy
     Wakeful = window.Wakeful
     WebSocket = window.WebSocket
+    DROWSY_URL = window.DROWSY_URL
+    WEASEL_URL = window.WEASEL_URL
 else
     # we're running in node
     $ = require 'jquery'
@@ -15,9 +17,8 @@ else
     {Drowsy} = require '../backbone.drowsy'
     {Wakeful} = require '../wakeful'
     should = require('chai').should()
-    WebSocket = require 'ws'
 
-DROWSY_URL = "http://localhost:9292"
+DROWSY_URL = "http://localhost:9292" unless DROWSY_URL?
 WEASEL_URL = "http://localhost:7777/faye" unless WEASEL_URL?
 TEST_DB = 'drowsy_test'
 TEST_COLLECTION = 'tests'

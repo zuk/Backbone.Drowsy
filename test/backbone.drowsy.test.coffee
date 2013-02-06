@@ -4,6 +4,8 @@ if window?
     _ = window._
     Backbone = window.Backbone
     Drowsy = window.Drowsy
+    DROWSY_URL = window.DROWSY_URL
+    WEASEL_URL = window.WEASEL_URL
 else
     # we're running in node
     $ = require 'jquery'
@@ -17,8 +19,7 @@ else
 NOTE: These tests are done against a live DrowsyDromedary instance!
 ###
 
-#TEST_URL = "http://drowsy.badger.encorelab.org/"
-TEST_URL = "http://localhost:9292/"
+DROWSY_URL = "http://localhost:9292/" unless DROWSY_URL?
 TEST_DB = 'drowsy_test'
 TEST_COLLECTION = 'tests'
 
@@ -36,19 +37,27 @@ if TEST_USERNAME? and TEST_PASSWORD?
                 'Basic ' + btoa(TEST_USERNAME+':'+TEST_PASSWORD);
 
 
-unless TEST_URL?
-    console.error("TEST_URL must point to a DrowsyDromedary server!")
+unless DROWSY_URL?
+    console.error("DROWSY_URL must point to a DrowsyDromedary server!")
 
 describe 'Drowsy', ->
+    @timeout(5000)
+
+    before (done) ->
+        # ensure that the test database and collection exists
+        @server = new Drowsy.Server(DROWSY_URL)
+        @server.createDatabase(TEST_DB).done =>
+            db = @server.database(TEST_DB)
+            db.createCollection(TEST_COLLECTION).done ->
+                done()
+
+
     describe ".generateMongoObjectId", ->
         it "should generate a 24-character hex string", ->
             id = Drowsy.generateMongoObjectId()
             id.should.match /^[0-9a-f]{24}$/
 
     describe 'Drowsy.Server', ->
-        before ->
-           @server = new Drowsy.Server(TEST_URL)
-
         describe '#url', ->
             it "should strip the trailing slash off the URL", ->
                 @server.url().slice(-1).should.not.equal '/'
@@ -60,7 +69,7 @@ describe 'Drowsy', ->
                 db.should.be.an.instanceOf Drowsy.Database
                 
                 db.name.should.equal TEST_DB
-                db.url.should.match new RegExp("^#{TEST_URL}")
+                db.url.should.match new RegExp("^#{DROWSY_URL}")
                 db.url.should.match new RegExp("#{TEST_DB}$")
 
         describe '#databases', ->
@@ -74,16 +83,16 @@ describe 'Drowsy', ->
 
     describe 'Drowsy.Database', ->
         before ->
-           @server = new Drowsy.Server(TEST_URL)
+           @server = new Drowsy.Server(DROWSY_URL)
            @db = new Drowsy.Database(@server, TEST_DB)
 
         describe 'constructor', ->
             it "should assign a url based on the given server and dbName", ->
                 db = new Drowsy.Database @server, TEST_DB
-                db.url.should.equal TEST_URL.replace(/\/$/,'') + "/" + TEST_DB
+                db.url.should.equal DROWSY_URL.replace(/\/$/,'') + "/" + TEST_DB
 
             it "should be able to take a url as first argument", ->
-                (=> db = new Drowsy.Database TEST_URL, TEST_DB).should.not.throw(/url/)
+                (=> db = new Drowsy.Database DROWSY_URL, TEST_DB).should.not.throw(/url/)
 
             it "should be able to take a Drowsy.Server instance as the first argument", ->
                 (=> db = new Drowsy.Database @server, TEST_DB ).should.not.throw(/url/)
@@ -128,7 +137,7 @@ describe 'Drowsy', ->
 
                 doc = new TestDocument()
                 console.log doc.url()
-                doc.url().should.match new RegExp("^" + TEST_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "/" + "[0-9a-f]+" + "$")
+                doc.url().should.match new RegExp("^" + DROWSY_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "/" + "[0-9a-f]+" + "$")
 
         describe "#Collection", ->
             it "should return a Drowsy.Collection class with the given collectionName", ->
@@ -142,7 +151,7 @@ describe 'Drowsy', ->
 
                 coll = new TestCollection()
                 console.log coll.url
-                coll.url.should.match new RegExp("^" + TEST_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "$")
+                coll.url.should.match new RegExp("^" + DROWSY_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "$")
 
     describe 'Drowsy.Document', ->
         describe "#parse", ->
@@ -225,7 +234,7 @@ describe 'Drowsy', ->
 
         describe "#save", ->
             it "should upsert using a client-side generated ObjectID", (done) ->
-                @server = new Drowsy.Server(TEST_URL)
+                @server = new Drowsy.Server(DROWSY_URL)
                 @db = new Drowsy.Database(@server, TEST_DB)
 
                 class MyDoc extends @db.Document(TEST_COLLECTION)
