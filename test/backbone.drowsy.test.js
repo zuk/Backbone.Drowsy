@@ -129,9 +129,16 @@
         });
       });
       describe('#createCollection', function() {
-        return it("should create the given collection in this database", function(done) {
+        it("should create the given collection in this database", function(done) {
           return this.db.createCollection(TEST_COLLECTION, function(result) {
             result.should.match(/success|already_exists/);
+            return done();
+          });
+        });
+        return it("should return a deferred and resolve to 'success' or 'already_exists'", function(done) {
+          return this.db.createCollection(TEST_COLLECTION).always(function(result, xhr) {
+            result.should.match(/success|already_exists/);
+            this["this"].state().should.equal('resolved');
             return done();
           });
         });

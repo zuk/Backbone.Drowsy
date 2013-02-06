@@ -36,6 +36,8 @@
       if (options == null) {
         options = {};
       }
+      this.createDatabase = __bind(this.createDatabase, this);
+
       this.databases = __bind(this.databases, this);
 
       this.database = __bind(this.database, this);
@@ -72,6 +74,38 @@
           return after(dbs);
         }
       });
+    };
+
+    Server.prototype.createDatabase = function(dbName, after) {
+      var deferredCreate;
+      deferredCreate = $.Deferred();
+      Backbone.ajax({
+        url: this.url(),
+        type: 'POST',
+        data: {
+          db: dbName
+        },
+        complete: function(xhr, status) {
+          console.log(xhr.status);
+          if (xhr.status === 304) {
+            deferredCreate.resolve('already_exists', xhr);
+            if (after != null) {
+              return after('already_exists');
+            }
+          } else if (xhr.status === 201) {
+            deferredCreate.resolve('created', xhr);
+            if (after != null) {
+              return after('created');
+            }
+          } else {
+            deferredCreate.reject('failed', xhr);
+            if (after != null) {
+              return after('failed', xhr.status);
+            }
+          }
+        }
+      });
+      return deferredCreate;
     };
 
     return Server;
@@ -133,10 +167,10 @@
     };
 
     Database.prototype.createCollection = function(collectionName, after) {
-      var db;
-      db = this;
-      return Backbone.ajax({
-        url: db.url,
+      var deferredCreate;
+      deferredCreate = $.Deferred();
+      Backbone.ajax({
+        url: this.url,
         type: 'POST',
         data: {
           collection: collectionName
@@ -145,15 +179,25 @@
           if (after != null) {
             console.log(xhr.status);
             if (xhr.status === 304) {
-              return after('already_exists');
+              deferredCreate.resolve('already_exists', xhr);
+              if (after != null) {
+                return after('already_exists');
+              }
             } else if (xhr.status === 201) {
-              return after('created');
+              deferredCreate.resolve('created', xhr);
+              if (after != null) {
+                return after('created');
+              }
             } else {
-              return after('failed', xhr.status);
+              deferredCreate.reject('failed', xhr);
+              if (after != null) {
+                return after('failed', xhr.status);
+              }
             }
           }
         }
       });
+      return deferredCreate;
     };
 
     Database.prototype.Document = function(collectionName) {

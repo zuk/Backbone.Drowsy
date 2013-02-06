@@ -45,6 +45,27 @@ class Drowsy.Server
                         dbs.push @database(dbName)
                 after dbs
 
+    createDatabase: (dbName, after) =>
+        deferredCreate = $.Deferred()
+
+        Backbone.ajax
+            url: @url()
+            type: 'POST'
+            data: {db: dbName}
+            complete: (xhr, status) ->               
+                console.log xhr.status
+                if xhr.status is 304
+                    deferredCreate.resolve('already_exists', xhr)
+                    after('already_exists') if after?
+                else if xhr.status is 201
+                    deferredCreate.resolve('created', xhr)
+                    after('created') if after?
+                else
+                    deferredCreate.reject('failed', xhr)
+                    after('failed', xhr.status) if after?
+
+        return deferredCreate
+
 
 class Drowsy.Database # this should be anonymous, but we're naming it for clarity in debugging
     @VALID_DB_RX: /[^\s\.\$\/\\\*]+/
@@ -71,20 +92,26 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
                 after(colls)
 
     createCollection: (collectionName, after) =>
-        db = @
+        deferredCreate = $.Deferred()
+        
         Backbone.ajax
-            url: db.url
+            url: @url
             type: 'POST'
             data: {collection: collectionName}
             complete: (xhr, status) ->
                 if after?
                     console.log xhr.status
                     if xhr.status is 304
-                        after('already_exists')
+                        deferredCreate.resolve('already_exists', xhr)
+                        after('already_exists') if after?
                     else if xhr.status is 201
-                        after('created')
+                        deferredCreate.resolve('created', xhr)
+                        after('created') if after?
                     else
-                        after('failed', xhr.status)
+                        deferredCreate.reject('failed', xhr)
+                        after('failed', xhr.status) if after?
+
+        return deferredCreate
 
     Document: (collectionName) =>
         db = @

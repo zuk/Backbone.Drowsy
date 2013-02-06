@@ -70,6 +70,8 @@ describe 'Drowsy', ->
                     dbs[0].name.should.not.be.empty
                     done()
 
+        #TODO: test '#createDatabase'
+
     describe 'Drowsy.Database', ->
         before ->
            @server = new Drowsy.Server(TEST_URL)
@@ -106,6 +108,12 @@ describe 'Drowsy', ->
             it "should create the given collection in this database", (done) ->
                 @db.createCollection TEST_COLLECTION, (result) ->
                     result.should.match /success|already_exists/
+                    done()
+
+            it "should return a deferred and resolve to 'success' or 'already_exists'", (done) ->
+                @db.createCollection(TEST_COLLECTION).always (result, xhr) ->
+                    result.should.match /success|already_exists/
+                    @this.state().should.equal 'resolved'
                     done()
 
         describe "#Document", ->
