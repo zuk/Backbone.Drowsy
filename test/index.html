@@ -20,7 +20,7 @@
 
     window.should = chai.should();
     mocha.setup('bdd');
-    mocha.setup({globals: ['hasCert']});
+    mocha.setup({ignoreLeaks: true});
   </script>
 
   <script src="../backbone.drowsy.js"></script>
