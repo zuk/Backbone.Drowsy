@@ -52,7 +52,6 @@
     };
 
     Wakeful.wake = function(obj, fayeUrl, options) {
-      var _set;
       if (options == null) {
         options = {};
       }
@@ -145,28 +144,6 @@
           }
         }
       });
-      if (obj.add == null) {
-        _set = obj.set;
-        obj.set = function(key, val, options) {
-          var attrs, ret;
-          ret = _set.apply(this, arguments);
-          if (!(options != null) && typeof val === 'object') {
-            options = val;
-          }
-          if (options == null) {
-            return ret;
-          }
-          if (options.broadcast) {
-            if (typeof key === 'object') {
-              attrs = key;
-            } else {
-              attrs = {};
-              attrs[key] = val;
-            }
-            return this.broadcast('patch', attrs);
-          }
-        };
-      }
       if (options.tunein !== false) {
         return obj.tunein();
       }

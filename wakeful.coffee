@@ -22,6 +22,8 @@ readVal = (context, val) ->
     else 
         val
 
+# FIXME: under Firefox, Faye seems to occassionally use JSONP instead of WebSockets
+#           which makes Mocha complain about globals being introduced inside code (_jsonp_ vars)
 class Wakeful
     # A list of all Faye.Subscriptions crated by Wakeful objects.
     # We keep this list in order to close all subs at the end of each
@@ -111,7 +113,7 @@ class Wakeful
                     action: action
                     data: data
                     bid: bid
-                    
+
                 @broadcastEchoQueue.push(deferredPub)
 
                 pub = @faye.publish @subscriptionUrl(), bcast
@@ -157,28 +159,6 @@ class Wakeful
                             @update(bcast.data, remove: false)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
-
-        unless obj.add? # FIXME: crappy duck-typing test to see if this is a Document
-            
-            _set = obj.set
-
-            obj.set = (key, val, options) ->
-                ret = _set.apply(@, arguments)
-
-                if !options? and typeof val is 'object'
-                    options = val
-
-                unless options?
-                    return ret
-
-                if options.broadcast
-                    if typeof key is 'object'
-                        attrs = key
-                    else 
-                        attrs = {}
-                        attrs[key] = val
-
-                    @broadcast 'patch', attrs
 
 
         unless options.tunein is false
