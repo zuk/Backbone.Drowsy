@@ -35,3 +35,9 @@ legend {
 *.optional * {
     font-size: 70% !important;
 }
+
+div.doc {
+    margin-bottom: 5px;
+    padding-left: 10px;
+    border-left: 6px solid #ccc;
+}

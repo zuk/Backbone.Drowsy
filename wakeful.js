@@ -36,12 +36,10 @@
       deferredSync = $.Deferred();
       changed = obj.changed;
       Backbone.sync(method, obj, options).done(function() {
-        var data;
         switch (method) {
           case 'create':
           case 'update':
-            data = obj.toJSON();
-            obj.broadcast(method, data);
+            obj.broadcast(method, obj.toJSON());
             break;
           case 'patch':
             obj.broadcast(method, changed);
@@ -54,6 +52,10 @@
     Wakeful.wake = function(obj, fayeUrl, options) {
       if (options == null) {
         options = {};
+      }
+      if ((obj.fayeUrl != null) && obj.fayeUrl === fayeUrl) {
+        console.log(obj, "is already awake... skipping");
+        return;
       }
       if (fayeUrl == null) {
         throw new Error("Must provide a fayeUrl");
@@ -92,20 +94,30 @@
           return delete this.sub;
         },
         broadcast: function(action, data) {
-          var bcast, bid, deferredPub, pub,
+          var bcast, bid, deferredPub, pub, toChannel,
             _this = this;
           deferredPub = $.Deferred();
           bid = Drowsy.generateMongoObjectId();
+          if (!(data._id != null) && (this.id != null)) {
+            data._id = this.id;
+          }
           bcast = {
             action: action,
             data: data,
-            bid: bid
+            bid: bid,
+            origin: this.origin()
           };
           this.broadcastEchoQueue.push(deferredPub);
-          pub = this.faye.publish(this.subscriptionUrl(), bcast);
+          toChannel = this.subscriptionUrl();
+          if (this instanceof Drowsy.Collection) {
+            toChannel = toChannel.replace(/\*$/, '~');
+          }
+          pub = this.faye.publish(toChannel, bcast);
+          this.trigger('wakeful:broadcast:sent', bcast);
+          deferredPub.notify('sent');
           pub.callback(function() {
-            _this.trigger('wakeful:broadcast:sent', bcast);
-            return deferredPub.notify('sent');
+            _this.trigger('wakeful:broadcast:confirmed', bcast);
+            return deferredPub.notify('confirmed');
           });
           pub.errback(function(err) {
             console.warn("Broadcast #" + bid + " failed!", err, bcast);
@@ -117,24 +129,39 @@
           return deferredPub;
         },
         receiveBroadcast: function(bcast) {
-          var echoIndex, echoOf;
-          this.trigger('wakeful:broadcast:received', bcast);
+          var docs, echoIndex, echoOf;
           echoOf = _.find(this.broadcastEchoQueue, function(defPub) {
             return defPub.bid === bcast.bid;
           });
           if (echoOf != null) {
             echoIndex = _.indexOf(this.broadcastEchoQueue, echoOf);
             this.broadcastEchoQueue.splice(echoIndex, 1);
+            this.trigger('wakeful:broadcast:echo', bcast);
             echoOf.resolve();
+            return;
           }
+          if ((bcast.origin != null) && bcast.origin === this.origin()) {
+            console.warn(this.origin(), "received broadcast from self... how did this happen?");
+            return;
+          }
+          this.trigger('wakeful:broadcast:received', bcast);
           switch (bcast.action) {
             case 'update':
             case 'patch':
             case 'create':
-              if (this.set != null) {
+              if (this instanceof Drowsy.Document) {
                 return this.set(bcast.data);
               } else {
-                return this.update(bcast.data, {
+                if (_.isArray(bcast.data)) {
+                  docs = bcast.data;
+                  if (bcast.action === 'patch' && !(bcast.data != null)) {
+                    console.error("PATCH received by collection will be ignored because the broadcast data did not include a document id (_id)", bcast);
+                    return;
+                  }
+                } else {
+                  docs = [bcast.data];
+                }
+                return this.update(docs, {
                   remove: false
                 });
               }
@@ -142,6 +169,9 @@
             default:
               return console.warn("Don't know how to handle broadcast with action", bcast.action);
           }
+        },
+        origin: function() {
+          return readVal(this, this.url) + "#" + this.faye.getClientId();
         }
       });
       if (options.tunein !== false) {

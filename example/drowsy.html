@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Backbone.DrowsyDromedary</title>
+    <title>Drowsy Database Browser Example</title>
 
     <script src="http://code.jquery.com/jquery-1.9.0.js"></script>
     <script src="http://underscorejs.org/underscore.js"></script>
@@ -95,7 +95,7 @@
                 collection.fetch();
             });
 
-            //$('#username, #password').on('change', function () {
+            $('#username, #password').on('change', function () {
                 var username = $('#username').val();
                 var password = $('#password').val();
                 Backbone.$.ajaxSetup({
@@ -104,7 +104,7 @@
                             'Basic '+btoa(username+':'+password));
                     }
                 });
-            //});
+            });
         });
     </script>
 

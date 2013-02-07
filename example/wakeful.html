@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wakeful Collaborative Editing Example</title>
+
+    <script src="http://code.jquery.com/jquery-1.9.0.js"></script>
+    <script src="http://underscorejs.org/underscore.js"></script>
+    <script src="http://backbonejs.org/backbone.js"></script>
+
+    <script src="../backbone.drowsy.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+    <script>
+        "use strict"; 
+
+         
+        var CommonCollection; // Drowsy.Collection class
+        var CommonDoc; // Drowsy.Document class
+
+        var sharedUrl; // the url of the shared collection
+        var wakefulUrl; // the url where WakefulWeasel is running
+        var sharedCollection; // CommonCol instance
+       
+
+        $(function () {
+            $('#connect').on('click', function () {
+                sharedUrl = $('#shared-url').val();
+                wakefulUrl = $('#wakeful-url').val();
+
+                $.getScript(wakefulUrl + '/client.js').done(function () {
+                    $.getScript('../wakeful.js').done(function () {
+                        // define a Drowsy.Document and a Drowsy.Collection class
+                        CommonDoc = Drowsy.Document.extend({
+                            urlRoot: sharedUrl
+                        });
+                        CommonCollection = Drowsy.Collection.extend({
+                            url: sharedUrl,
+                            model: CommonDoc
+                        });
+
+                        // instantiate the collection
+                        sharedCollection = new CommonCollection();
+
+                        // wire it in to WakefulWeasel so that it can send and receive broadcasts
+                        Wakeful.wake(sharedCollection, wakefulUrl);
+
+                        // retrieve the collection's current state
+                        sharedCollection.fetch().fail(function (xhr, status) {
+                            console.error("sharedCollection.fetch() failed :(", status, xhr);
+                            alert("Couldn't fetch from the collection URL. Are you sure there is a Drowsy collection at the given URL?");
+                        });
+
+                        $(document)
+                            .on('change', '.doc input', function (ev) {
+                                var $input = $(ev.target);
+                                var docDiv = $input.parent('.doc');
+                                var doc = docDiv.data('doc');
+                                var data = {}
+                                data[$input.attr('name')] = $input.val();
+                                console.log("Saving change:", data);
+                                doc.save(data, {patch: true});
+                            })
+                            .on('keyup', '.doc input', function (ev) {
+                                var $input = $(ev.target);
+                                var docDiv = $input.parent('.doc');
+                                var doc = docDiv.data('doc');
+                                var data = {}
+                                data[$input.attr('name')] = $input.val();
+
+                                // since we're broadcasting to the collection, need to
+                                // explicitly set the data._id to tell the collectionwhich 
+                                // model to update
+                                data._id = doc.id;
+
+                                sharedCollection.broadcast('patch', data);
+                            });
+
+                        $('#add').on('click', function () {
+                            var doc = new CommonDoc();
+                            //Wakeful.wake(doc, wakefulUrl);
+                            doc.set('booyaka', 'shan');
+                            doc.set('foo', 'bar');
+                            doc.save().done(function () {
+                                sharedCollection.add(doc);
+                            });
+                        });
+
+                        sharedCollection.on('all', function (ev, obj, data) { console.log(ev, obj, data) });
+
+                        //sharedCollection.on('add', renderDoc);
+                        sharedCollection.on('reset', function (obj) {
+                            obj.each(function (doc) {
+                                Wakeful.wake(doc, wakefulUrl);
+                                renderDoc(doc);
+                            });
+                        });
+
+                        sharedCollection.on('add change', function (obj) {
+                            renderDoc(obj);
+                        });
+                    });
+                });
+            });
+
+            function renderDoc(doc) {
+                var docDiv = $('#shared-collection #'+doc.id);
+                if (docDiv.length === 0) {
+                    docDiv = $('<div style="white-space: pre"></div>');
+                    docDiv.attr('id', doc.id);
+                    docDiv.addClass('doc');
+                    docDiv.data('doc', doc);
+                    $('#shared-collection').append(docDiv);
+                }
+
+                var jsonReplacer = function (key, value) {
+                    if (key !== '_id' && (typeof value === 'string' || typeof value == 'number'))
+                        return "<input type='text' name='"+key+"' value='"+value+"' class='"+key+"' size='"+(value.toString().length+10)+"' />";
+                    else
+                        return value;
+                }
+                docDiv.html(JSON.stringify(doc.toJSON(), jsonReplacer, 4));
+            }
+
+            $('#username, #password').on('change', function () {
+                var username = $('#username').val();
+                var password = $('#password').val();
+                Backbone.$.ajaxSetup({
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader('Authorization', 
+                            'Basic '+btoa(username+':'+password));
+                    }
+                });
+            });
+        });
+    </script>
+
+    <dl>
+        <dt class="optional"><label for="drowsy-url">Basic HTTP AUTH <em>(optional)</em>:</label></dt>
+        <dd class="optional"><span class="hint">Username:</span> <input type="text" value="" id="username" style="width: 10em" /></dd>
+        <dd class="optional"><span class="hint">Password:</span> <input type="text" value="" id="password" style="width: 10em" /></dd>
+
+        <dt style="margin-top: 20px"><label for="shared-url">Shared Collection URL:</label></dt>
+        <dd>
+            <input type="text" id="shared-url" style="width: 40em" value="http://localhost:9292/drowsy_test/shared_things" />
+        </dd>
+        <dt style="margin-top: 20px"><label for="wakeful-url">WakefulWeasel URL:</label></dt>
+        <dd>
+            <input type="text" id="wakeful-url" style="width: 40em" value="http://localhost:7777/faye" />
+            <button type="submit" id="connect">Connect</button>
+        </dd>
+    </dl>
+
+    <h3>Shared Documents:</h3>
+    <div id="shared-collection">
+    </div>
+    <input type="button" value="ADD" id="add" />
+</head>

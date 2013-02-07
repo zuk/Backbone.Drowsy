@@ -39,8 +39,7 @@ class Wakeful
             # TODO: figure out how to support delete
             switch method
                 when 'create','update'
-                    data = obj.toJSON()
-                    obj.broadcast(method, data)
+                    obj.broadcast(method, obj.toJSON())
                 when 'patch'
                     obj.broadcast(method, changed)
 
@@ -52,6 +51,10 @@ class Wakeful
 
     @wake: (obj, fayeUrl, options = {}) ->
 
+        if obj.fayeUrl? and obj.fayeUrl is fayeUrl
+            console.log obj,"is already awake... skipping"
+            return
+        
         throw new Error("Must provide a fayeUrl") unless fayeUrl?
         
         obj.fayeUrl = fayeUrl
@@ -85,7 +88,6 @@ class Wakeful
                 #     throw "Invalid WakefulWeasel WebSocket URL!"
 
                 deferredSub = $.Deferred()
-
                 @sub = @faye.subscribe @subscriptionUrl(), _.bind(@receiveBroadcast, this)
 
                 @sub.callback ->
@@ -109,24 +111,39 @@ class Wakeful
                 # it has nothing to do with MongoDB here
                 bid = Drowsy.generateMongoObjectId()
 
+                # don't need to stringify data... Faye does it for us
+                #data = JSON.stringify(data) unless typeof data is 'string'
+
+                # make sure that we always have an id attached so that
+                # we can identify who this data refers to
+                if not data._id? and @id?
+                    data._id = @id
+
                 bcast = 
                     action: action
                     data: data
                     bid: bid
+                    origin: @origin()
 
                 @broadcastEchoQueue.push(deferredPub)
 
-                pub = @faye.publish @subscriptionUrl(), bcast
+                toChannel = @subscriptionUrl()
+                if this instanceof Drowsy.Collection
+                    toChannel = toChannel.replace(/\*$/,'~') # hack to get channel subscription to hear its own broadcasts
+                pub = @faye.publish toChannel, bcast
+
+                @trigger 'wakeful:broadcast:sent', bcast
+                deferredPub.notify 'sent'
                 
                 pub.callback =>
                     # NOTE: Usually this will get executed AFTER deferredPub.
                     #       ... not sure why, but Faye seems to execute this callback
                     #       some time after broadcasting the pub.
                     #       As a consequence, a .progress() handler bound to
-                    #       deferredPub doesn't normally get triggered, since
-                    #       it will resolve first.
-                    @trigger 'wakeful:broadcast:sent', bcast
-                    deferredPub.notify 'sent'
+                    #       deferredPub for 'confirmed' doesn't normally get triggered, 
+                    #       since it will have resolved already.
+                    @trigger 'wakeful:broadcast:confirmed', bcast
+                    deferredPub.notify 'confirmed'
 
                 pub.errback (err) =>
                     console.warn "Broadcast ##{bid} failed!", err, bcast
@@ -140,26 +157,42 @@ class Wakeful
 
 
             receiveBroadcast: (bcast) -> 
-                @trigger 'wakeful:broadcast:received', bcast
-
                 echoOf = _.find @broadcastEchoQueue, (defPub) -> defPub.bid is bcast.bid
                 
                 if echoOf?
                     echoIndex = _.indexOf @broadcastEchoQueue, echoOf
                     @broadcastEchoQueue.splice(echoIndex, 1) # remove echoOf
+                    @trigger 'wakeful:broadcast:echo', bcast
                     echoOf.resolve()
+                    return
+                
+                # FIXME: this probably doesn't actually do anything since messages to
+                #   self would be caught by the echoOf check
+                if bcast.origin? and bcast.origin is @origin()
+                    console.warn @origin(),"received broadcast from self... how did this happen?"
+                    return
+
+                @trigger 'wakeful:broadcast:received', bcast
 
                 switch bcast.action
                     when 'update','patch','create'
-                        # TODO: do we need to handle 'patch' differently from 'update'?
-                        #       ... probably yes, at least for nested objects
-                        if @set?
+                        if this instanceof Drowsy.Document
                             @set bcast.data
-                        else
-                            @update(bcast.data, remove: false)
+                        else 
+                            # this is a collection
+                            if _.isArray(bcast.data)
+                                docs = bcast.data
+                                if bcast.action is 'patch' and not bcast.data?
+                                    console.error "PATCH received by collection will be ignored because the broadcast data did not include a document id (_id)", bcast
+                                    return
+                            else
+                                docs = [bcast.data]
+                            @update(docs, remove: false)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 
+            origin: ->
+                readVal(this, @url) + "#" + @faye.getClientId()
 
         unless options.tunein is false
             obj.tunein()
