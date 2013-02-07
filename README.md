@@ -122,20 +122,29 @@ With node, `cd` into the Backbone.Drowsy directory, then install dependencies us
 
 `npm install`
 
-You should now be able to run all tests in `test/`:
+You should now be able to run all tests in `test/` by running the following in the root Backbone.Drowsy directory:
 
 `cake test`
 
-To run in the browser:
+By default the tests run against `http://localhost:9292` for DrowsyDromedary and `http://localhost:7777/faye` for 
+WakefulWeasel.
+To test against a different DrowsyDromedary and WakefulWeasel instance, set the DROWSY_URL and WEASEL_URL 
+environment variables, like this:
+
+`DROWSY_URL=http://drowsy.example.com WEASEL_URL=http://weasel.example.com/faye cake test`
+
+
+##### You can also run the tests in the browser:
+
+First, make sure the Backbone.Drowsy directory is accessible via a web browser. For example, you can serve
+the directory contents with Ruby's WEBrick. Just run the following in the root Backbone.Drowsy directory:
 
 ```
 ruby -r webrick -e "s = WEBrick::HTTPServer.new(:Port => 8000, :DocumentRoot => Dir.pwd); trap('INT') { s.shutdown }; s.start"
 ```
 
-Then point your browser to [http://localhost:8000/test].
+Then point your browser to [http://localhost:8000/test](http://localhost:8000/test).
 
-To run the Wakeful specs you must have WakefulWeasel running on [http://localhost:7777/faye] (or  specify a different Weasel URL by 
-changing the WEASEL_URL value in index.html).
 
 
 
