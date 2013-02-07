@@ -85,16 +85,15 @@
       })(this.db.Collection(TEST_COLLECTION));
       return this.TestColl = TestColl;
     });
-    afterEach(function(done) {
-      var sub, _i, _len, _ref;
+    afterEach(function() {
+      var sub, _i, _len, _ref, _results;
       _ref = Wakeful.subs;
+      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         sub = _ref[_i];
-        sub.cancel();
+        _results.push(sub.cancel());
       }
-      return setTimeout((function() {
-        return done();
-      }), 100);
+      return _results;
     });
     describe(".wake", function() {
       it('should enhance Drowsy.Document with wakeful functionality', function() {

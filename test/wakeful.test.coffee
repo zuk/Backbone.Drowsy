@@ -54,13 +54,10 @@ describe 'Wakeful', ->
             model: TestDoc
         @TestColl = TestColl
 
-    afterEach (done) ->
+    afterEach ->
         for sub in Wakeful.subs
             sub.cancel()
-
-        # give faye a chance to close things down (can't figure out a way to hook this properly)
-        setTimeout (-> done()), 100
-
+        
 
     describe ".wake", ->
         it 'should enhance Drowsy.Document with wakeful functionality', ->
