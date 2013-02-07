@@ -14,6 +14,8 @@ else
     Backbone.$ = $
     should = require('chai').should()
     {Drowsy} = require '../backbone.drowsy'
+    DROWSY_URL = process.env.DROWSY_URL
+    WEASEL_URL = process.env.WEASEL_URL
 
 ###
 NOTE: These tests are done against a live DrowsyDromedary instance!
@@ -44,12 +46,23 @@ describe 'Drowsy', ->
     @timeout(5000)
 
     before (done) ->
+        createTestCollection = =>
+            db = @server.database(TEST_DB)
+            db.collections().done (colls) =>
+                if TEST_COLLECTION in _.pluck(colls, 'name')
+                    done()
+                else
+                    db.createCollection(TEST_COLLECTION).done ->
+                        done()
+
         # ensure that the test database and collection exists
         @server = new Drowsy.Server(DROWSY_URL)
-        @server.createDatabase(TEST_DB).done =>
-            db = @server.database(TEST_DB)
-            db.createCollection(TEST_COLLECTION).done ->
-                done()
+        @server.databases().done (dbs) =>
+            if TEST_DB in _.pluck(dbs, 'name')
+                createTestCollection()
+            else
+                @server.createDatabase(TEST_DB).done createTestCollection
+
 
 
     describe ".generateMongoObjectId", ->
@@ -77,6 +90,7 @@ describe 'Drowsy', ->
                 @server.databases (dbs) ->
                     dbs[0].should.be.an.instanceOf Drowsy.Database
                     dbs[0].name.should.not.be.empty
+                    _.pluck(dbs, 'name').should.include TEST_DB
                     done()
 
         #TODO: test '#createDatabase'
@@ -103,7 +117,9 @@ describe 'Drowsy', ->
                     (colls.length > 0).should.equal true
                     _.each colls, (coll) ->
                         coll.should.be.an.instanceOf Drowsy.Collection
+                    _.pluck(colls, 'name').should.include TEST_COLLECTION
                     done()
+
 
             it "should instantiate Drowsy.Collection instances with valid urls and collectionNames", (done) ->
                 @db.collections (colls) ->

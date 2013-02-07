@@ -36,14 +36,22 @@ class Drowsy.Server
         new Drowsy.Database(@, dbName)
 
     databases: (after) =>
+        deferredFetch = $.Deferred()
+
         Backbone.ajax
             url: @url()
+            dataType: 'json'
             success: (data) =>
                 dbs = []
                 for dbName in data
                     if dbName.match Drowsy.Database.VALID_DB_RX
                         dbs.push @database(dbName)
-                after dbs
+                deferredFetch.resolve(dbs)
+                after(dbs) if after?
+            error: (xhr, status) =>
+                deferredFetch.reject(status, xhr)
+
+        return deferredFetch
 
     createDatabase: (dbName, after) =>
         deferredCreate = $.Deferred()
@@ -52,17 +60,19 @@ class Drowsy.Server
             url: @url()
             type: 'POST'
             data: {db: dbName}
-            complete: (xhr, status) ->               
-                console.log xhr.status
-                if xhr.status is 304
-                    deferredCreate.resolve('already_exists', xhr)
-                    after('already_exists') if after?
-                else if xhr.status is 201
-                    deferredCreate.resolve('created', xhr)
-                    after('created') if after?
-                else
-                    deferredCreate.reject('failed', xhr)
-                    after('failed', xhr.status) if after?
+        .done (data, status, xhr) =>
+            if status is 'success'
+                deferredCreate.resolve('already_exists', xhr)
+                after('already_exists') if after?
+            else
+                deferredCreate.resolve(status, xhr)
+                after(status) if after?
+        .fail (xhr, status) =>
+            if xhr.status is 0 and xhr.responseText is ""
+                # CORS requests come through as 
+                deferredCreate.resolve('cors_mystery')
+            deferredCreate.reject(xhr)
+            after('failed') if after?
 
         return deferredCreate
 
@@ -81,15 +91,23 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
 
 
     collections: (after) =>
-        db = @
+        deferredFetch = $.Deferred()
+
         Backbone.ajax
             url: @url
-            success: (data) =>
-                colls = []
-                for collName in data
-                    c = new class extends db.Collection(collName)
-                    colls.push c
-                after(colls)
+            dataType: 'json'
+        .done (data, status, xhr) =>
+            colls = []
+            for collName in data
+                c = new class extends @Collection(collName)
+                colls.push c
+            deferredFetch.resolve(colls)
+            after(colls) if after?
+        .fail (xhr, status) =>
+            deferredFetch.reject(xhr)
+            after('failed') if after?
+
+        return deferredFetch
 
     createCollection: (collectionName, after) =>
         deferredCreate = $.Deferred()
@@ -98,17 +116,16 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
             url: @url
             type: 'POST'
             data: {collection: collectionName}
-            complete: (xhr, status) ->
-                console.log xhr.status
-                if xhr.status is 304
-                    deferredCreate.resolve('already_exists', xhr)
-                    after('already_exists') if after?
-                else if xhr.status is 201
-                    deferredCreate.resolve('created', xhr)
-                    after('created') if after?
-                else
-                    deferredCreate.reject('failed', xhr)
-                    after('failed', xhr.status) if after?
+        .done (data, status, xhr) =>
+            if status is 'success'
+                deferredCreate.resolve('already_exists', xhr)
+                after('already_exists') if after?
+            else
+                deferredCreate.resolve(status, xhr)
+                after(status) if after?
+        .fail (xhr, status) =>
+            deferredCreate.reject(xhr)
+            after('failed') if after?
 
         return deferredCreate
 

@@ -59,9 +59,12 @@
     };
 
     Server.prototype.databases = function(after) {
-      var _this = this;
-      return Backbone.ajax({
+      var deferredFetch,
+        _this = this;
+      deferredFetch = $.Deferred();
+      Backbone.ajax({
         url: this.url(),
+        dataType: 'json',
         success: function(data) {
           var dbName, dbs, _i, _len;
           dbs = [];
@@ -71,38 +74,47 @@
               dbs.push(_this.database(dbName));
             }
           }
-          return after(dbs);
+          deferredFetch.resolve(dbs);
+          if (after != null) {
+            return after(dbs);
+          }
+        },
+        error: function(xhr, status) {
+          return deferredFetch.reject(status, xhr);
         }
       });
+      return deferredFetch;
     };
 
     Server.prototype.createDatabase = function(dbName, after) {
-      var deferredCreate;
+      var deferredCreate,
+        _this = this;
       deferredCreate = $.Deferred();
       Backbone.ajax({
         url: this.url(),
         type: 'POST',
         data: {
           db: dbName
-        },
-        complete: function(xhr, status) {
-          console.log(xhr.status);
-          if (xhr.status === 304) {
-            deferredCreate.resolve('already_exists', xhr);
-            if (after != null) {
-              return after('already_exists');
-            }
-          } else if (xhr.status === 201) {
-            deferredCreate.resolve('created', xhr);
-            if (after != null) {
-              return after('created');
-            }
-          } else {
-            deferredCreate.reject('failed', xhr);
-            if (after != null) {
-              return after('failed', xhr.status);
-            }
+        }
+      }).done(function(data, status, xhr) {
+        if (status === 'success') {
+          deferredCreate.resolve('already_exists', xhr);
+          if (after != null) {
+            return after('already_exists');
           }
+        } else {
+          deferredCreate.resolve(status, xhr);
+          if (after != null) {
+            return after(status);
+          }
+        }
+      }).fail(function(xhr, status) {
+        if (xhr.status === 0 && xhr.responseText === "") {
+          deferredCreate.resolve('cors_mystery');
+        }
+        deferredCreate.reject(xhr);
+        if (after != null) {
+          return after('failed');
         }
       });
       return deferredCreate;
@@ -138,61 +150,69 @@
     }
 
     Database.prototype.collections = function(after) {
-      var db,
+      var deferredFetch,
         _this = this;
-      db = this;
-      return Backbone.ajax({
+      deferredFetch = $.Deferred();
+      Backbone.ajax({
         url: this.url,
-        success: function(data) {
-          var c, collName, colls, _i, _len;
-          colls = [];
-          for (_i = 0, _len = data.length; _i < _len; _i++) {
-            collName = data[_i];
-            c = new ((function(_super) {
+        dataType: 'json'
+      }).done(function(data, status, xhr) {
+        var c, collName, colls, _i, _len;
+        colls = [];
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          collName = data[_i];
+          c = new ((function(_super) {
 
-              __extends(_Class, _super);
+            __extends(_Class, _super);
 
-              function _Class() {
-                return _Class.__super__.constructor.apply(this, arguments);
-              }
+            function _Class() {
+              return _Class.__super__.constructor.apply(this, arguments);
+            }
 
-              return _Class;
+            return _Class;
 
-            })(db.Collection(collName)));
-            colls.push(c);
-          }
+          })(_this.Collection(collName)));
+          colls.push(c);
+        }
+        deferredFetch.resolve(colls);
+        if (after != null) {
           return after(colls);
         }
+      }).fail(function(xhr, status) {
+        deferredFetch.reject(xhr);
+        if (after != null) {
+          return after('failed');
+        }
       });
+      return deferredFetch;
     };
 
     Database.prototype.createCollection = function(collectionName, after) {
-      var deferredCreate;
+      var deferredCreate,
+        _this = this;
       deferredCreate = $.Deferred();
       Backbone.ajax({
         url: this.url,
         type: 'POST',
         data: {
           collection: collectionName
-        },
-        complete: function(xhr, status) {
-          console.log(xhr.status);
-          if (xhr.status === 304) {
-            deferredCreate.resolve('already_exists', xhr);
-            if (after != null) {
-              return after('already_exists');
-            }
-          } else if (xhr.status === 201) {
-            deferredCreate.resolve('created', xhr);
-            if (after != null) {
-              return after('created');
-            }
-          } else {
-            deferredCreate.reject('failed', xhr);
-            if (after != null) {
-              return after('failed', xhr.status);
-            }
+        }
+      }).done(function(data, status, xhr) {
+        if (status === 'success') {
+          deferredCreate.resolve('already_exists', xhr);
+          if (after != null) {
+            return after('already_exists');
           }
+        } else {
+          deferredCreate.resolve(status, xhr);
+          if (after != null) {
+            return after(status);
+          }
+        }
+      }).fail(function(xhr, status) {
+        deferredCreate.reject(xhr);
+        if (after != null) {
+          return after('failed');
         }
       });
       return deferredCreate;

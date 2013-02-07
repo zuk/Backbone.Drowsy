@@ -3,6 +3,7 @@ if window?
     $ = window.$
     _ = window._
     Backbone = window.Backbone
+    Faye = window.Faye
     Drowsy = window.Drowsy
     Wakeful = window.Wakeful
     WebSocket = window.WebSocket
@@ -14,9 +15,12 @@ else
     _ = require 'underscore'
     Backbone = require 'backbone'
     Backbone.$ = $
+    Faye = require 'faye'
     {Drowsy} = require '../backbone.drowsy'
     {Wakeful} = require '../wakeful'
     should = require('chai').should()
+    DROWSY_URL = process.env.DROWSY_URL
+    WEASEL_URL = process.env.WEASEL_URL
 
 DROWSY_URL = "http://localhost:9292" unless DROWSY_URL?
 WEASEL_URL = "http://localhost:7777/faye" unless WEASEL_URL?
@@ -50,9 +54,12 @@ describe 'Wakeful', ->
             model: TestDoc
         @TestColl = TestColl
 
-    afterEach ->
+    afterEach (done) ->
         for sub in Wakeful.subs
             sub.cancel()
+
+        # give faye a chance to close things down (can't figure out a way to hook this properly)
+        setTimeout (-> done()), 100
 
 
     describe ".wake", ->
@@ -251,71 +258,6 @@ describe 'Wakeful', ->
                             bc = doc1.broadcast 'update', doc1.toJSON()
                             bc.progress (n) ->
                                 console.log n
-
-    describe ".set", ->
-        it "should return a deferred when the broadcast flag is set",  ->
-            doc1 = new @TestDoc()
-
-            dsub1 = Wakeful.wake doc1, WEASEL_URL
-
-            dsub1.done ->
-                rand = Math.random()
-                df = doc1.set('foo', rand, {broadcast: true})
-
-                df.should.have.property('resolve')
-                df.resolve.should.be.a 'function'
-
-
-        it "should broadcast the change as a patch when broadcast flag is set", (done) ->
-            doc1 = new @TestDoc()
-
-            dsub1 = Wakeful.wake doc1, WEASEL_URL
-
-            dsub1.done ->
-                rand = Math.random()
-                dpub = doc1.set('foo', rand, {broadcast: true})
-
-                # TODO: check (somehow?) that we actually broadcast something...
-                #       presumably dpub won't resolve until we received the broadcast
-                #       but maybe better to make sure?
-
-                dpub.done ->
-                    dpub.state().should.equal 'resolved'
-                    done()
-
-        it "should should NOT persist the change when broadcast flag is set", (done) ->
-            doc1 = new @TestDoc()
-
-            doc1.set('foo', 'bar')
-
-            doc1.save().done ->
-
-                dsub1 = Wakeful.wake doc1, WEASEL_URL
-
-                dsub1.done ->
-                    rand = Math.random()
-                    dpub = doc1.set('foo', rand, {broadcast: true})
-
-                    dpub.done ->
-                        doc1.get('foo').should.equal rand
-                        dpub.state().should.equal 'resolved'
-                        doc1.fetch().done ->
-                            doc1.get('foo').should.equal 'bar'
-                            done()
-
-
-        it "should NOT broadcast the change if the broadcast flag was not set", (done) ->
-            doc1 = new @TestDoc()
-
-            dsub1 = Wakeful.wake doc1, WEASEL_URL
-
-            dsub1.done ->
-                rand = Math.random()
-                dpub = doc1.set('foo', rand, {broadcast: false})
-
-                # dpub should be undefined
-                (!dpub?).should.be.true
-                done()
                         
 
     describe ".sync", ->
@@ -352,6 +294,8 @@ describe 'Wakeful', ->
             doc1 = new @TestDoc()
             doc2 = new @TestDoc()
 
+
+            doc1.set('foo', 'ALPHA')
             doc1.set('bar', 'a')
 
             doc1.save().done ->
@@ -362,25 +306,24 @@ describe 'Wakeful', ->
                     dsub1 = Wakeful.wake doc1, WEASEL_URL
                     dsub2 = Wakeful.wake doc2, WEASEL_URL
 
-                    # this change will be NOT be reversed by the sync
+                    # this change will NOT be reversed by the sync, even though we don't persist it
                     doc2.set('bar', 'b')
 
                     # when both have subscribed
                     $.when(dsub1, dsub2).done ->
-                        rand = Math.random()
 
                         # 'patch' request ignores attributes set with .set()
                         # ... need to specify the attrs we want patched in 
                         # the first argument to save() ...
-                        #doc1.set 'foo', rand
+                        #doc1.set 'foo', 'BETA'
                         
                         doc2.on 'change', ->
-                            doc2.get('foo').should.equal rand
+                            doc2.get('foo').should.equal 'BETA'
                             doc2.get('bar').should.equal 'b'
                             done()
 
                         # ... like so
-                        doc1.save({foo: rand}, {patch: true, broadcast: true})
+                        doc1.save({foo: 'BETA'}, {patch: true, broadcast: true})
                         # NOTE: need to also set broadcast flag when sending a patch!
                         #   The following will fail, because .sync is never triggered:
                         #
