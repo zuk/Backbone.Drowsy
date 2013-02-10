@@ -29,6 +29,10 @@
 
     function Wakeful() {}
 
+    if (Faye != null) {
+      Wakeful.Faye = Faye;
+    }
+
     Wakeful.subs = [];
 
     Wakeful.sync = function(method, obj, options) {
@@ -62,14 +66,19 @@
       }
       obj.fayeUrl = fayeUrl;
       obj.broadcastEchoQueue = [];
-      obj.faye = new Faye.Client(fayeUrl);
+      obj.faye = new Wakeful.Faye.Client(fayeUrl);
       obj.sync = Wakeful.sync;
       obj = _.extend(obj, {
         subscriptionUrl: function() {
-          var coll, db, drowsyUrl, id, rx, url, _ref;
+          var coll, db, drowsyUrl, id, parsedUrl, rx, url;
           drowsyUrl = readVal(this, this.url);
-          rx = new RegExp("[a-z]+://[^/]+/?/(\\w+)/(\\w+)(?:/([0-9a-f]{24}))?");
-          _ref = drowsyUrl.match(rx), url = _ref[0], db = _ref[1], coll = _ref[2], id = _ref[3];
+          rx = /[a-z]+:\/\/[^\/]+\/([^\/\.]+)\/(\w[^\/\$]*)(?:\/([0-9a-f]{24}))?/;
+          parsedUrl = drowsyUrl.match(rx);
+          if (parsedUrl == null) {
+            console.error(drowsyUrl, "is not a valid Drowsy URL usable with WakefulWeasel");
+            throw new Error('Invalid Drowsy URL', drowsyUrl);
+          }
+          url = parsedUrl[0], db = parsedUrl[1], coll = parsedUrl[2], id = parsedUrl[3];
           if (id != null) {
             return "/" + db + "/" + coll + "/" + id;
           } else {
@@ -179,9 +188,33 @@
       }
     };
 
+    Wakeful.loadFayeClient = function(fayeUrl) {
+      var deferredLoad;
+      deferredLoad = $.Deferred();
+      $.getScript("" + fayeUrl + "/client.js", function(script) {
+        Wakeful.Faye = window.Faye;
+        return deferredLoad.resolve();
+      });
+      return deferredLoad;
+    };
+
     return Wakeful;
 
   })();
+
+  Drowsy.Document.prototype.wake = function(fayeUrl, options) {
+    if (options == null) {
+      options = {};
+    }
+    return Wakeful.wake(this, fayeUrl, options);
+  };
+
+  Drowsy.Collection.prototype.wake = function(fayeUrl, options) {
+    if (options == null) {
+      options = {};
+    }
+    return Wakeful.wake(this, fayeUrl, options);
+  };
 
   root = typeof exports !== "undefined" && exports !== null ? exports : this;
 

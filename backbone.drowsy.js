@@ -9,6 +9,7 @@
     $ = window.$;
     _ = window._;
     Backbone = window.Backbone;
+    Backbone.ajax = $.ajax;
   } else {
     $ = require('jquery');
     _ = require('underscore');

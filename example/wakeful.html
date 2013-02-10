@@ -8,6 +8,7 @@
     <script src="http://backbonejs.org/backbone.js"></script>
 
     <script src="../backbone.drowsy.js"></script>
+    <script src="../wakeful.js"></script>
 
     <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
@@ -29,77 +30,77 @@
                 sharedUrl = $('#shared-url').val();
                 wakefulUrl = $('#wakeful-url').val();
 
-                $.getScript(wakefulUrl + '/client.js').done(function () {
-                    $.getScript('../wakeful.js').done(function () {
-                        // define a Drowsy.Document and a Drowsy.Collection class
-                        CommonDoc = Drowsy.Document.extend({
-                            urlRoot: sharedUrl
-                        });
-                        CommonCollection = Drowsy.Collection.extend({
-                            url: sharedUrl,
-                            model: CommonDoc
-                        });
+                // wait until the Faye client.js is loaded...
+                Wakeful.loadFayeClient(wakefulUrl).done(function () {
+                    // define a Drowsy.Document and a Drowsy.Collection class
+                    CommonDoc = Drowsy.Document.extend({
+                        urlRoot: sharedUrl
+                    });
 
-                        // instantiate the collection
-                        sharedCollection = new CommonCollection();
+                    CommonCollection = Drowsy.Collection.extend({
+                        url: sharedUrl,
+                        model: CommonDoc
+                    });
 
-                        // wire it in to WakefulWeasel so that it can send and receive broadcasts
-                        Wakeful.wake(sharedCollection, wakefulUrl);
+                    // instantiate the collection
+                    sharedCollection = new CommonCollection();
 
-                        // retrieve the collection's current state
-                        sharedCollection.fetch().fail(function (xhr, status) {
-                            console.error("sharedCollection.fetch() failed :(", status, xhr);
-                            alert("Couldn't fetch from the collection URL. Are you sure there is a Drowsy collection at the given URL?");
-                        });
+                    // wire in to WakefulWeasel so that this collection
+                    // will send and receive broadcasts
+                    sharedCollection.wake(wakefulUrl);
 
-                        $(document)
-                            .on('change', '.doc input', function (ev) {
-                                var $input = $(ev.target);
-                                var docDiv = $input.parent('.doc');
-                                var doc = docDiv.data('doc');
-                                var data = {}
-                                data[$input.attr('name')] = $input.val();
-                                console.log("Saving change:", data);
-                                doc.save(data, {patch: true});
-                            })
-                            .on('keyup', '.doc input', function (ev) {
-                                var $input = $(ev.target);
-                                var docDiv = $input.parent('.doc');
-                                var doc = docDiv.data('doc');
-                                var data = {}
-                                data[$input.attr('name')] = $input.val();
+                    // retrieve the collection's current state
+                    sharedCollection.fetch().fail(function (xhr, status) {
+                        console.error("sharedCollection.fetch() failed :(", status, xhr);
+                        alert("Couldn't fetch from the collection URL. Are you sure there is a Drowsy collection at the given URL?");
+                    });
 
-                                // since we're broadcasting to the collection, need to
-                                // explicitly set the data._id to tell the collectionwhich 
-                                // model to update
-                                data._id = doc.id;
+                    $(document)
+                        .on('change', '.doc input', function (ev) {
+                            var $input = $(ev.target);
+                            var docDiv = $input.parent('.doc');
+                            var doc = docDiv.data('doc');
+                            var data = {}
+                            data[$input.attr('name')] = $input.val();
+                            console.log("Saving change:", data);
+                            doc.save(data, {patch: true});
+                        })
+                        .on('keyup', '.doc input', function (ev) {
+                            var $input = $(ev.target);
+                            var docDiv = $input.parent('.doc');
+                            var doc = docDiv.data('doc');
+                            var data = {}
+                            data[$input.attr('name')] = $input.val();
 
-                                sharedCollection.broadcast('patch', data);
-                            });
+                            // since we're broadcasting to the collection, need to
+                            // explicitly set the data._id to tell the collectionwhich 
+                            // model to update
+                            data._id = doc.id;
 
-                        $('#add').on('click', function () {
-                            var doc = new CommonDoc();
-                            //Wakeful.wake(doc, wakefulUrl);
-                            doc.set('booyaka', 'shan');
-                            doc.set('foo', 'bar');
-                            doc.save().done(function () {
-                                sharedCollection.add(doc);
-                            });
+                            sharedCollection.broadcast('patch', data);
                         });
 
-                        sharedCollection.on('all', function (ev, obj, data) { console.log(ev, obj, data) });
-
-                        //sharedCollection.on('add', renderDoc);
-                        sharedCollection.on('reset', function (obj) {
-                            obj.each(function (doc) {
-                                Wakeful.wake(doc, wakefulUrl);
-                                renderDoc(doc);
-                            });
+                    $('#add').on('click', function () {
+                        var doc = new CommonDoc();
+                        doc.set('booyaka', 'shan');
+                        doc.set('foo', 'bar');
+                        doc.save().done(function () {
+                            sharedCollection.add(doc);
                         });
+                    });
 
-                        sharedCollection.on('add change', function (obj) {
-                            renderDoc(obj);
+                    sharedCollection.on('all', function (ev, obj, data) { console.log(ev, obj, data) });
+
+                    //sharedCollection.on('add', renderDoc);
+                    sharedCollection.on('reset', function (obj) {
+                        obj.each(function (doc) {
+                            doc.wake(wakefulUrl);
+                            renderDoc(doc);
                         });
+                    });
+
+                    sharedCollection.on('add change', function (obj) {
+                        renderDoc(obj);
                     });
                 });
             });

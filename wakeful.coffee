@@ -25,6 +25,9 @@ readVal = (context, val) ->
 # FIXME: under Firefox, Faye seems to occassionally use JSONP instead of WebSockets
 #           which makes Mocha complain about globals being introduced inside code (_jsonp_ vars)
 class Wakeful
+    if Faye?
+        @Faye = Faye
+
     # A list of all Faye.Subscriptions crated by Wakeful objects.
     # We keep this list in order to close all subs at the end of each
     # test/spec.
@@ -61,15 +64,25 @@ class Wakeful
        
         obj.broadcastEchoQueue = []
 
-        obj.faye = new Faye.Client(fayeUrl)
+        obj.faye = new Wakeful.Faye.Client(fayeUrl)
 
         obj.sync = Wakeful.sync
 
         obj = _.extend obj,
             subscriptionUrl: ->
                 drowsyUrl = readVal(this, @url)
-                rx = new RegExp("[a-z]+://[^/]+/?/(\\w+)/(\\w+)(?:/([0-9a-f]{24}))?")
-                [url, db, coll, id] = drowsyUrl.match(rx)
+                # This regex matches Drowsy urls like 
+                #   http://drowsy.example.com/my-database/my-collection
+                #   http://localhost/mydb/some_collection/13ad6a54cb08c806f8f00000
+                #   https://drowsy.foo.com/example-database/some.collection
+                rx = /[a-z]+:\/\/[^\/]+\/([^\/\.]+)\/(\w[^\/\$]*)(?:\/([0-9a-f]{24}))?/
+                parsedUrl = drowsyUrl.match(rx)
+
+                unless parsedUrl?
+                    console.error drowsyUrl, "is not a valid Drowsy URL usable with WakefulWeasel"
+                    throw new Error('Invalid Drowsy URL', drowsyUrl)
+
+                [url, db, coll, id] = parsedUrl
 
                 if id?
                     "/#{db}/#{coll}/#{id}"
@@ -196,6 +209,25 @@ class Wakeful
 
         unless options.tunein is false
             obj.tunein()
+
+    # returns a jQuery.Deferred, so you can call .done() or .then() on the result
+    #   to wait until the script has been loaded
+    @loadFayeClient: (fayeUrl) ->
+        deferredLoad = $.Deferred()
+        $.getScript "#{fayeUrl}/client.js", (script) -> 
+            # CoffeeScript prevents us from using late-loaded globals in our code so
+            #   have to load it into Wakeful instead
+            Wakeful.Faye = window.Faye
+            deferredLoad.resolve()
+
+        deferredLoad
+
+
+Drowsy.Document::wake = (fayeUrl, options = {}) ->
+    Wakeful.wake(this, fayeUrl, options)
+
+Drowsy.Collection::wake = (fayeUrl, options = {}) ->
+    Wakeful.wake(this, fayeUrl, options)
 
 root = exports ? this
 root.Wakeful = Wakeful

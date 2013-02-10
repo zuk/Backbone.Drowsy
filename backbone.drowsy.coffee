@@ -3,6 +3,9 @@ if window?
     $ = window.$
     _ = window._
     Backbone = window.Backbone
+    # not sure why, but sometimes we get "Backbone has no method 'ajax'" 
+    # errors unless we do this first
+    Backbone.ajax = $.ajax
 else
     # we're running in node
     $ = require('jquery');
