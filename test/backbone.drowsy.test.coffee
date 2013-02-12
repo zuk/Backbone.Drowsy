@@ -180,6 +180,15 @@ describe 'Drowsy', ->
                 parsed._id.should.equal "50f7875a1b85e10000000003"
                 parsed.foo.should.equal "bar"
 
+            it "should deal with ObjectID encoded as a plain string (without $oid)", ->
+                data = JSON.parse '{"_id": "50f7875a1b85e10000000003", "foo": "bar"}'
+
+                doc = new Drowsy.Document()
+                parsed = doc.parse(data)
+
+                parsed._id.should.equal "50f7875a1b85e10000000003"
+                parsed.foo.should.equal "bar"
+
             it "should deal with ISODates encoded as {$date: '...'}", ->
                 data = JSON.parse '{
                         "_id": {"$oid": "50f7875a1b85e10000000003"}, 

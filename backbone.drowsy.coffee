@@ -155,7 +155,7 @@ class Drowsy.Document extends Backbone.Model
         #@set "created_at", Date()  unless @get("created_at")
     
     parse: (data) ->
-        data._id = data._id.$oid
+        data._id = data._id.$oid ? data._id
 
         # convert all { $data: "..." } to Date() object
         parsed = @parseObjectRecursively data, @jsonToDate

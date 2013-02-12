@@ -256,6 +256,14 @@
           parsed._id.should.equal("50f7875a1b85e10000000003");
           return parsed.foo.should.equal("bar");
         });
+        it("should deal with ObjectID encoded as a plain string (without $oid)", function() {
+          var data, doc, parsed;
+          data = JSON.parse('{"_id": "50f7875a1b85e10000000003", "foo": "bar"}');
+          doc = new Drowsy.Document();
+          parsed = doc.parse(data);
+          parsed._id.should.equal("50f7875a1b85e10000000003");
+          return parsed.foo.should.equal("bar");
+        });
         it("should deal with ISODates encoded as {$date: '...'}", function() {
           var data, doc, parsed;
           data = JSON.parse('{\

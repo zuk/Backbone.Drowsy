@@ -294,8 +294,8 @@
     };
 
     Document.prototype.parse = function(data) {
-      var parsed;
-      data._id = data._id.$oid;
+      var parsed, _ref;
+      data._id = (_ref = data._id.$oid) != null ? _ref : data._id;
       parsed = this.parseObjectRecursively(data, this.jsonToDate);
       return parsed;
     };
