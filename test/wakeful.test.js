@@ -129,7 +129,7 @@
             return done();
           });
         });
-        return it('should be able to subscribe to multiple documents and collections', function(done) {
+        it('should be able to subscribe to multiple documents and collections', function(done) {
           var coll1, coll2, doc1, doc2, dsubColl1, dsubColl2, dsubDoc1, dsubDoc2;
           doc1 = new this.TestDoc();
           doc2 = new this.TestDoc();
@@ -167,6 +167,17 @@
             return done();
           });
         });
+        return it('should not allow tuning in for a Drowsy.Document that does not have an id', function() {
+          var doc;
+          doc = new this.TestDoc();
+          Wakeful.wake(doc, WEASEL_URL, {
+            tunein: false
+          });
+          doc.set('_id', null);
+          return (function() {
+            return doc.tunein();
+          }).should["throw"](Error);
+        });
       });
       return describe("#broadcast", function() {
         it("should notify when sent, and resolve when echoed", function(done) {
@@ -187,6 +198,30 @@
               });
               return dpub.always(function() {
                 dpub.state().should.equal('resolved');
+                return done();
+              });
+            });
+          });
+        });
+        it("should not broadcast for a Drowsy.Document that does not have an id", function(done) {
+          var doc;
+          doc = new this.TestDoc();
+          return doc.save().done(function() {
+            var dsub;
+            dsub = Wakeful.wake(doc, WEASEL_URL);
+            return dsub.done(function() {
+              var dpub, rand, sent;
+              rand = Math.random();
+              doc.set('foo', rand);
+              sent = false;
+              doc.set('_id', null);
+              dpub = doc.broadcast('update', doc.toJSON());
+              dpub.progress(function(note) {
+                return sent = true;
+              });
+              return dpub.always(function() {
+                sent.should.be["false"];
+                dpub.state().should.equal('rejected');
                 return done();
               });
             });
@@ -335,7 +370,7 @@
           });
         });
       });
-      return it("should trigger an 'add' event on a Drowsy.Collection when a new Drowsy.Document is created in it", function(done) {
+      it("should trigger an 'add' event on a Drowsy.Collection when a new Drowsy.Document is created in it", function(done) {
         var coll1, doc1, dsub1, dsub2;
         doc1 = new this.TestDoc();
         coll1 = new this.TestColl();
@@ -346,6 +381,25 @@
             return done();
           });
           return doc1.save();
+        });
+      });
+      return it("should broadcast original Drowsy.Document attributes if they are altered in a save() callback", function(done) {
+        var doc1, doc2, dsub1, dsub2, successCallbackThatModifiesAttributes;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        doc1.set('bar', 'a');
+        successCallbackThatModifiesAttributes = function() {
+          return doc1.set('bar', 'z');
+        };
+        doc2.set('_id', doc1.id);
+        doc2.on('wakeful:broadcast:received', function(bcast) {
+          bcast.data.bar.should.equal('a');
+          return done();
+        });
+        dsub1 = Wakeful.wake(doc1, WEASEL_URL);
+        dsub2 = Wakeful.wake(doc2, WEASEL_URL);
+        return doc1.save({}, {
+          success: successCallbackThatModifiesAttributes
         });
       });
     });

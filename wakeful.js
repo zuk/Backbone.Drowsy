@@ -36,14 +36,15 @@
     Wakeful.subs = [];
 
     Wakeful.sync = function(method, obj, options) {
-      var changed, deferredSync;
+      var changed, deferredSync, originalObj;
       deferredSync = $.Deferred();
       changed = obj.changed;
+      originalObj = obj.clone();
       Backbone.sync(method, obj, options).done(function() {
         switch (method) {
           case 'create':
           case 'update':
-            obj.broadcast(method, obj.toJSON());
+            obj.broadcast(method, originalObj.toJSON());
             break;
           case 'patch':
             obj.broadcast(method, changed);
@@ -87,6 +88,10 @@
         },
         tunein: function() {
           var deferredSub;
+          if (this instanceof Drowsy.Document && !this.has('_id')) {
+            console.error("Wakeful cannot tunein for this object because it does not yet been assigned an id!", this);
+            throw new Error("Cannot call tunein() on Drowsy.Document because it has not yet been assigned an id", this);
+          }
           deferredSub = $.Deferred();
           this.sub = this.faye.subscribe(this.subscriptionUrl(), _.bind(this.receiveBroadcast, this));
           this.sub.callback(function() {
@@ -109,6 +114,11 @@
           bid = Drowsy.generateMongoObjectId();
           if (!(data._id != null) && (this.id != null)) {
             data._id = this.id;
+          }
+          if (data._id == null) {
+            console.warn("Cannot broadcast data for a Drowsy.Document without an id!", data, this);
+            deferredPub.reject('mssing_id');
+            return deferredPub;
           }
           bcast = {
             action: action,

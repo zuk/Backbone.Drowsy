@@ -80,7 +80,7 @@ describe 'Wakeful', ->
             dsub.resolve.should.be.a 'function'
 
             dsub.done ->
-                done()
+                done() 
 
 
         describe "#tunein", ->
@@ -132,6 +132,19 @@ describe 'Wakeful', ->
 
                     done()
 
+            it 'should not allow tuning in for a Drowsy.Document that does not have an id', ->
+                # can't call tunein for id-less document because we can't subscribe to a proper channel
+
+                doc = new @TestDoc()
+
+                Wakeful.wake doc, WEASEL_URL, tunein: false
+
+                doc.set('_id', null)
+
+                (->
+                    doc.tunein()
+                ).should.throw(Error)
+
         describe "#broadcast", ->
             it "should notify when sent, and resolve when echoed", (done) ->
                 doc = new @TestDoc()
@@ -156,7 +169,30 @@ describe 'Wakeful', ->
                             #sent.should.be.true
                             done()
                         
-            
+            it "should not broadcast for a Drowsy.Document that does not have an id", (done) ->
+                doc = new @TestDoc()
+                doc.save().done ->
+                    dsub = Wakeful.wake doc, WEASEL_URL
+                    dsub.done ->
+                        rand = Math.random()
+                        doc.set 'foo', rand
+
+                        sent = false
+
+                        doc.set('_id', null)
+
+                        dpub = doc.broadcast 'update', doc.toJSON()
+                        # FIXME: dsub.progress is never triggered because
+                        #       Faye echoes back the broadcast before the
+                        #       'sent' callback that calld dsub.notify()
+                        #       is called.
+                        dpub.progress (note) ->
+                            sent = true
+                        dpub.always ->
+                            sent.should.be.false
+                            dpub.state().should.equal 'rejected'
+                            done()
+
             # it "should push onto the broadcastEchoQueue and then pop when echo received", (done) ->
             #     doc = new @TestDoc()
             #     doc.save().done ->
@@ -364,7 +400,31 @@ describe 'Wakeful', ->
                     done()
 
                 doc1.save()
+
+        it "should broadcast original Drowsy.Document attributes if they are altered in a save() callback", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            doc1.set('bar', 'a')
+
+            successCallbackThatModifiesAttributes = ->
+                #doc1.clear()
+                doc1.set('bar', 'z')
+
+            doc2.set '_id', doc1.id
+
+            doc2.on 'wakeful:broadcast:received', (bcast) ->
+                bcast.data.bar.should.equal 'a'
+                done()
+
+            dsub1 = Wakeful.wake doc1, WEASEL_URL
+            dsub2 = Wakeful.wake doc2, WEASEL_URL
+
+            doc1.save({}, success: successCallbackThatModifiesAttributes)
                 
+                
+
+
 
 
 

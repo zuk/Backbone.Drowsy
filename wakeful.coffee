@@ -37,12 +37,13 @@ class Wakeful
         deferredSync = $.Deferred()
 
         changed = obj.changed
+        originalObj = obj.clone()
 
         Backbone.sync(method, obj, options).done ->
             # TODO: figure out how to support delete
             switch method
                 when 'create','update'
-                    obj.broadcast(method, obj.toJSON())
+                    obj.broadcast(method, originalObj.toJSON())
                 when 'patch'
                     obj.broadcast(method, changed)
 
@@ -100,6 +101,10 @@ class Wakeful
                 #     console.error fayeUrl, "is not a valid WakefulWeasel WebSocket URL!"
                 #     throw "Invalid WakefulWeasel WebSocket URL!"
 
+                if this instanceof Drowsy.Document and !@has('_id')
+                    console.error "Wakeful cannot tunein for this object because it does not yet been assigned an id!", this
+                    throw new Error("Cannot call tunein() on Drowsy.Document because it has not yet been assigned an id", this)
+
                 deferredSub = $.Deferred()
                 @sub = @faye.subscribe @subscriptionUrl(), _.bind(@receiveBroadcast, this)
 
@@ -131,6 +136,11 @@ class Wakeful
                 # we can identify who this data refers to
                 if not data._id? and @id?
                     data._id = @id
+
+                unless data._id?
+                    console.warn("Cannot broadcast data for a Drowsy.Document without an id!", data, this)
+                    deferredPub.reject('mssing_id')
+                    return deferredPub
 
                 bcast = 
                     action: action
