@@ -25,6 +25,9 @@ readVal = (context, val) ->
 # FIXME: under Firefox, Faye seems to occassionally use JSONP instead of WebSockets
 #           which makes Mocha complain about globals being introduced inside code (_jsonp_ vars)
 class Wakeful
+    # mixin Backbone's Events module to allow Wakeful (itself) to handle events
+    _.extend this, Backbone.Events;
+
     if Faye?
         @Faye = Faye
 
@@ -216,6 +219,14 @@ class Wakeful
 
             origin: ->
                 readVal(this, @url) + "#" + @faye.getClientId()
+
+        obj.faye.bind 'transport:up', =>
+            @trigger 'transport:up'
+            Wakeful.trigger 'transport:up', obj
+
+        obj.faye.bind 'transport:down', =>
+            @trigger 'transport:down'
+            Wakeful.trigger 'transport:down', obj
 
         unless options.tunein is false
             obj.tunein()

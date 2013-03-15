@@ -29,6 +29,8 @@
 
     function Wakeful() {}
 
+    _.extend(Wakeful, Backbone.Events);
+
     if (Faye != null) {
       Wakeful.Faye = Faye;
     }
@@ -55,6 +57,7 @@
     };
 
     Wakeful.wake = function(obj, fayeUrl, options) {
+      var _this = this;
       if (options == null) {
         options = {};
       }
@@ -192,6 +195,14 @@
         origin: function() {
           return readVal(this, this.url) + "#" + this.faye.getClientId();
         }
+      });
+      obj.faye.bind('transport:up', function() {
+        _this.trigger('transport:up');
+        return Wakeful.trigger('transport:up', obj);
+      });
+      obj.faye.bind('transport:down', function() {
+        _this.trigger('transport:down');
+        return Wakeful.trigger('transport:down', obj);
       });
       if (options.tunein !== false) {
         return obj.tunein();

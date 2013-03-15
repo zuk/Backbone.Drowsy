@@ -80,7 +80,9 @@ describe 'Wakeful', ->
             dsub.resolve.should.be.a 'function'
 
             dsub.done ->
-                done() 
+                done()
+
+        # TODO: figure out some way to test the transport:down and transport:up events...
 
 
         describe "#tunein", ->
