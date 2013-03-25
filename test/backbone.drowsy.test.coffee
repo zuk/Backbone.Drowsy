@@ -2,6 +2,7 @@ if window?
     # we're running in a browser
     $ = window.$
     _ = window._
+    should = window.should
     Backbone = window.Backbone
     Drowsy = window.Drowsy
     DROWSY_URL = window.DROWSY_URL
@@ -232,6 +233,32 @@ describe 'Drowsy', ->
 
                 parsed.obj.should.be.an 'object'
                 parsed.obj[1].joo.should.equal 'gar'
+
+            it "should parse an object with a keys with null values", ->
+                data = JSON.parse '{
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, 
+                        "null1": null,
+                        "obj": {
+                            "foo": {"foo": "bar"},
+                            "bar": {"null2": null}
+                        }
+                    }'
+
+                doc = new Drowsy.Document()
+                parsed = doc.parse(data)
+
+                should.not.exist parsed.null1
+                should.not.exist parsed.obj.bar.null2
+
+            # extreme edge case
+            it "should parse an empty collection", ->
+                data = JSON.parse '[]'
+
+                coll = new Drowsy.Collection()
+                parsed = coll.parse(data)
+
+                
+
 
         describe "#toJSON", ->
             it "should NOT convert _id to {$oid: '...'}", -> # DrowsyDromedary doesn't expect _id to be specially formatted on input

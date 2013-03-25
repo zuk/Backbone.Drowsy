@@ -317,6 +317,9 @@
 
     Document.prototype.parseObjectRecursively = function(obj, parser) {
       var key, out, val;
+      if (obj === null) {
+        return null;
+      }
       out = {};
       for (key in obj) {
         val = obj[key];
@@ -330,7 +333,7 @@
 
     Document.prototype.jsonToDate = function(val) {
       var date;
-      if (val.$date != null) {
+      if ((val != null) && (val.$date != null)) {
         date = new Date(val.$date);
         if (isNaN(date.getTime())) {
           val.$invalid = true;

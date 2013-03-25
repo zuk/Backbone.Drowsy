@@ -175,6 +175,8 @@ class Drowsy.Document extends Backbone.Model
 
     # recursively parses all values in the object using the given parser
     parseObjectRecursively: (obj, parser) ->
+        return null if obj is null
+
         out = {}
         for key,val of obj
             out[key] = parser(val)
@@ -186,7 +188,7 @@ class Drowsy.Document extends Backbone.Model
         out
 
     jsonToDate: (val) ->
-        if val.$date?
+        if val? and val.$date?
             date = new Date(val.$date)
             if isNaN date.getTime()
                 val.$invalid = true

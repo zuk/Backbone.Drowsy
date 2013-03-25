@@ -8,6 +8,7 @@
   if (typeof window !== "undefined" && window !== null) {
     $ = window.$;
     _ = window._;
+    should = window.should;
     Backbone = window.Backbone;
     Drowsy = window.Drowsy;
     DROWSY_URL = window.DROWSY_URL;
@@ -284,7 +285,7 @@
           (parsed.date1 instanceof Date).should.be["true"];
           return parsed.meh.date2.getTime().should.equal((new Date("2013-01-24T02:01:35.151Z")).getTime());
         });
-        return it("should parse an array value as an array rather than an object", function() {
+        it("should parse an array value as an array rather than an object", function() {
           var data, doc, parsed;
           data = JSON.parse('{\
                         "_id": {"$oid": "50f7875a1b85e10000000003"}, \
@@ -304,6 +305,27 @@
           parsed.arr[1].joo.should.equal('gar');
           parsed.obj.should.be.an('object');
           return parsed.obj[1].joo.should.equal('gar');
+        });
+        it("should parse an object with a keys with null values", function() {
+          var data, doc, parsed;
+          data = JSON.parse('{\
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, \
+                        "null1": null,\
+                        "obj": {\
+                            "foo": {"foo": "bar"},\
+                            "bar": {"null2": null}\
+                        }\
+                    }');
+          doc = new Drowsy.Document();
+          parsed = doc.parse(data);
+          should.not.exist(parsed.null1);
+          return should.not.exist(parsed.obj.bar.null2);
+        });
+        return it("should parse an empty collection", function() {
+          var coll, data, parsed;
+          data = JSON.parse('[]');
+          coll = new Drowsy.Collection();
+          return parsed = coll.parse(data);
         });
       });
       describe("#toJSON", function() {
