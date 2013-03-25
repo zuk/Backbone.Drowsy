@@ -423,6 +423,26 @@ describe 'Wakeful', ->
             dsub2 = Wakeful.wake doc2, WEASEL_URL
 
             doc1.save({}, success: successCallbackThatModifiesAttributes)
+
+        it "should broadcast an update when changes are given in first argument to save()", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
+
+                $.when(
+                    doc1.wake(WEASEL_URL),
+                    doc2.wake(WEASEL_URL)
+                ).done ->
+                    doc2.on 'change', ->
+                        doc2.get('foo').should.equal 'ALPHA'
+                        done()
+
+                    doc1.set 'foo', 'BETA'
+
+                    doc1.save(foo: 'ALPHA', bar: 'a')
+
                 
                 
 

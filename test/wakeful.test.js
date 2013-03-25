@@ -383,7 +383,7 @@
           return doc1.save();
         });
       });
-      return it("should broadcast original Drowsy.Document attributes if they are altered in a save() callback", function(done) {
+      it("should broadcast original Drowsy.Document attributes if they are altered in a save() callback", function(done) {
         var doc1, doc2, dsub1, dsub2, successCallbackThatModifiesAttributes;
         doc1 = new this.TestDoc();
         doc2 = new this.TestDoc();
@@ -400,6 +400,25 @@
         dsub2 = Wakeful.wake(doc2, WEASEL_URL);
         return doc1.save({}, {
           success: successCallbackThatModifiesAttributes
+        });
+      });
+      return it("should broadcast an update when changes are given in first argument to save()", function(done) {
+        var doc1, doc2;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        return doc1.save().done(function() {
+          doc2.set('_id', doc1.id);
+          return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
+            doc2.on('change', function() {
+              doc2.get('foo').should.equal('ALPHA');
+              return done();
+            });
+            doc1.set('foo', 'BETA');
+            return doc1.save({
+              foo: 'ALPHA',
+              bar: 'a'
+            });
+          });
         });
       });
     });
