@@ -68,7 +68,7 @@ class Wakeful
        
         obj.broadcastEchoQueue = []
 
-        obj.faye = new Wakeful.Faye.Client(fayeUrl)
+        obj.faye = new Wakeful.Faye.Client(fayeUrl, timeout: 15) # WakefulWeasel timeout is 12 seconds, so +3 here... see http://faye.jcoglan.com/browser.html
 
         obj.sync = Wakeful.sync
 

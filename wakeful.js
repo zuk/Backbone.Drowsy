@@ -70,7 +70,9 @@
       }
       obj.fayeUrl = fayeUrl;
       obj.broadcastEchoQueue = [];
-      obj.faye = new Wakeful.Faye.Client(fayeUrl);
+      obj.faye = new Wakeful.Faye.Client(fayeUrl, {
+        timeout: 15
+      });
       obj.sync = Wakeful.sync;
       obj = _.extend(obj, {
         subscriptionUrl: function() {
