@@ -16,9 +16,9 @@
     "url": "https://github.com/zuk/Backbone.Drowsy.git"
   },
   "dependencies": {
-    "jquery" : "*",
-    "underscore" : "*",
-    "backbone" : "*"
+    "jquery" : "~1.8.3",
+    "underscore" : "1.4.4",
+    "backbone" : "0.9.10"
   },
   "analyze": false,
   "optionalDependencies": {
