@@ -13,6 +13,7 @@ else
     Backbone.$ = $
     {Drowsy} = require './backbone.drowsy'
     Faye = require 'faye'
+    global.window = {} # backbone 1.0.0 expects 'window' to be defined
 
 
 # calls the given val if it's a function, or just returns it as is otherwise

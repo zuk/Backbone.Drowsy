@@ -15,6 +15,7 @@
     Backbone.$ = $;
     Drowsy = require('./backbone.drowsy').Drowsy;
     Faye = require('faye');
+    global.window = {};
   }
 
   readVal = function(context, val) {
