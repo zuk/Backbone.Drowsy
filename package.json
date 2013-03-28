@@ -1,5 +1,5 @@
 {
-  "name": "Backbone.Drowsy",
+  "name": "backbone.drowsy",
   "main": "backbone.drowsy.js",
   "preferGlobal": false,
   "version": "0.0.9",
