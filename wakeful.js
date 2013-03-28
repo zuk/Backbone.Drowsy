@@ -185,7 +185,7 @@
                 } else {
                   docs = [bcast.data];
                 }
-                return this.update(docs, {
+                return this.set(docs, {
                   remove: false
                 });
               }

@@ -213,7 +213,7 @@ class Wakeful
                                     return
                             else
                                 docs = [bcast.data]
-                            @update(docs, remove: false)
+                            @set(docs, remove: false)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 
