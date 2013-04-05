@@ -154,7 +154,8 @@
           return deferredPub;
         },
         receiveBroadcast: function(bcast) {
-          var docs, echoIndex, echoOf;
+          var docs, echoIndex, echoOf,
+            _this = this;
           echoOf = _.find(this.broadcastEchoQueue, function(defPub) {
             return defPub.bid === bcast.bid;
           });
@@ -170,13 +171,12 @@
             return;
           }
           this.trigger('wakeful:broadcast:received', bcast);
-          bcast.data = this.parse(bcast.data);
           switch (bcast.action) {
             case 'update':
             case 'patch':
             case 'create':
               if (this instanceof Drowsy.Document) {
-                return this.set(bcast.data);
+                return this.set(this.parse(bcast.data));
               } else {
                 if (_.isArray(bcast.data)) {
                   docs = bcast.data;
@@ -187,6 +187,9 @@
                 } else {
                   docs = [bcast.data];
                 }
+                docs = docs.map(function(doc) {
+                  return _this.model.prototype.parse(doc);
+                });
                 return this.set(docs, {
                   remove: false
                 });
