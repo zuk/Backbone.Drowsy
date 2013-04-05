@@ -383,6 +383,25 @@
           return doc1.save();
         });
       });
+      it("should trigger an 'change' event on a Drowsy.Collection when a Drowsy.Document in it changes", function(done) {
+        var coll1, doc1, dsub1, dsub2;
+        doc1 = new this.TestDoc();
+        coll1 = new this.TestColl();
+        dsub1 = Wakeful.wake(doc1, WEASEL_URL);
+        dsub2 = Wakeful.wake(coll1, WEASEL_URL);
+        return doc1.save({
+          foo: 'bar'
+        }).done(function() {
+          return $.when(dsub1, dsub2).done(function() {
+            coll1.on('change', function() {
+              return done();
+            });
+            return doc1.save({
+              foo: 'faa'
+            });
+          });
+        });
+      });
       it("should broadcast original Drowsy.Document attributes if they are altered in a save() callback", function(done) {
         var doc1, doc2, dsub1, dsub2, successCallbackThatModifiesAttributes;
         doc1 = new this.TestDoc();
@@ -421,7 +440,7 @@
           });
         });
       });
-      return it("should correctly sync an update with a Date ($date) object", function(done) {
+      it("should correctly sync an update with a Date ($date) object", function(done) {
         var doc1, doc2;
         doc1 = new this.TestDoc();
         doc2 = new this.TestDoc();
@@ -437,6 +456,26 @@
             });
             doc1.set('this_is_a_date', theDate);
             return doc1.save();
+          });
+        });
+      });
+      return it("should correctly sync an update with a Date ($date) object when the receiver is a Collection", function(done) {
+        var coll1, doc1;
+        doc1 = new this.TestDoc();
+        coll1 = new this.TestColl();
+        coll1.add(doc1);
+        return doc1.save().done(function() {
+          return $.when(doc1.wake(WEASEL_URL), coll1.wake(WEASEL_URL)).done(function() {
+            var theDate;
+            theDate = new Date();
+            coll1.on('change', function() {
+              coll1.get(doc1.id).get('this_is_a_date').should.be.an["instanceof"](Date);
+              coll1.get(doc1.id).get('this_is_a_date').toLocaleString().should.equal(theDate.toLocaleString());
+              return done();
+            });
+            return doc1.save({
+              this_is_a_date: theDate
+            });
           });
         });
       });
