@@ -170,6 +170,7 @@
             return;
           }
           this.trigger('wakeful:broadcast:received', bcast);
+          bcast.data = this.parse(bcast.data);
           switch (bcast.action) {
             case 'update':
             case 'patch':

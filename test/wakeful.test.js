@@ -402,7 +402,7 @@
           success: successCallbackThatModifiesAttributes
         });
       });
-      return it("should broadcast an update when changes are given in first argument to save()", function(done) {
+      it("should broadcast an update when changes are given in first argument to save()", function(done) {
         var doc1, doc2;
         doc1 = new this.TestDoc();
         doc2 = new this.TestDoc();
@@ -418,6 +418,25 @@
               foo: 'ALPHA',
               bar: 'a'
             });
+          });
+        });
+      });
+      return it("should correctly sync an update with a Date ($date) object", function(done) {
+        var doc1, doc2;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        return doc1.save().done(function() {
+          doc2.set('_id', doc1.id);
+          return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
+            var theDate;
+            theDate = new Date();
+            doc2.on('change', function() {
+              doc2.get('this_is_a_date').should.be.an["instanceof"](Date);
+              doc2.get('this_is_a_date').toLocaleString().should.equal(theDate.toLocaleString());
+              return done();
+            });
+            doc1.set('this_is_a_date', theDate);
+            return doc1.save();
           });
         });
       });

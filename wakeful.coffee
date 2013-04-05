@@ -201,6 +201,8 @@ class Wakeful
 
                 @trigger 'wakeful:broadcast:received', bcast
 
+                bcast.data = @parse bcast.data
+
                 switch bcast.action
                     when 'update','patch','create'
                         if this instanceof Drowsy.Document

@@ -443,15 +443,28 @@ describe 'Wakeful', ->
 
                     doc1.save(foo: 'ALPHA', bar: 'a')
 
-                
-                
 
+        it "should correctly sync an update with a Date ($date) object", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
 
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
 
+                $.when(
+                    doc1.wake(WEASEL_URL),
+                    doc2.wake(WEASEL_URL)
+                ).done ->
+                    theDate = new Date()
 
+                    doc2.on 'change', ->
+                        doc2.get('this_is_a_date').should.be.an.instanceof Date
+                        doc2.get('this_is_a_date').toLocaleString().should.equal theDate.toLocaleString()
+                        done()
 
+                    doc1.set 'this_is_a_date', theDate
 
-
+                    doc1.save()
 
 
 
