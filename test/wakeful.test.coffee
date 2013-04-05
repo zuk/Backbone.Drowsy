@@ -459,6 +459,30 @@ describe 'Wakeful', ->
 
                     doc1.save(foo: 'ALPHA', bar: 'a')
 
+        it "should NOT broadcast an update when save() is called with silent: true", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
+
+                $.when(
+                    doc1.wake(WEASEL_URL),
+                    doc2.wake(WEASEL_URL)
+                ).done ->
+                    changeFired = false
+                    doc2.on 'change', ->
+                        doc2.get('foo').should.equal 'ALPHA'
+                        changeFired = true
+
+                    doc1.set 'foo', 'BETA'
+
+                    doc1.save({foo: 'ALPHA', bar: 'a'}, {silent: true}).done ->
+                        setTimeout (-> 
+                                changeFired.should.be.false
+                                done()
+                            ), 500
+
 
         it "should correctly sync an update with a Date ($date) object", (done) ->
             doc1 = new @TestDoc()

@@ -47,9 +47,9 @@ class Wakeful
             # TODO: figure out how to support delete
             switch method
                 when 'create','update'
-                    obj.broadcast(method, originalObj.toJSON())
+                    obj.broadcast(method, originalObj.toJSON()) unless options.silent
                 when 'patch'
-                    obj.broadcast(method, changed)
+                    obj.broadcast(method, changed) unless options.silent
 
             # FIXME: maybe don't resolve until .broadcast() resolves?
             deferredSync.resolve()

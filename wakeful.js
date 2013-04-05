@@ -47,10 +47,14 @@
         switch (method) {
           case 'create':
           case 'update':
-            obj.broadcast(method, originalObj.toJSON());
+            if (!options.silent) {
+              obj.broadcast(method, originalObj.toJSON());
+            }
             break;
           case 'patch':
-            obj.broadcast(method, changed);
+            if (!options.silent) {
+              obj.broadcast(method, changed);
+            }
         }
         return deferredSync.resolve();
       });
