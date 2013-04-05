@@ -463,18 +463,19 @@
         var coll1, doc1;
         doc1 = new this.TestDoc();
         coll1 = new this.TestColl();
-        coll1.add(doc1);
         return doc1.save().done(function() {
-          return $.when(doc1.wake(WEASEL_URL), coll1.wake(WEASEL_URL)).done(function() {
-            var theDate;
-            theDate = new Date();
-            coll1.on('change', function() {
-              coll1.get(doc1.id).get('this_is_a_date').should.be.an["instanceof"](Date);
-              coll1.get(doc1.id).get('this_is_a_date').toLocaleString().should.equal(theDate.toLocaleString());
-              return done();
-            });
-            return doc1.save({
-              this_is_a_date: theDate
+          return coll1.fetch().done(function() {
+            return $.when(doc1.wake(WEASEL_URL), coll1.wake(WEASEL_URL)).done(function() {
+              var theDate;
+              theDate = new Date();
+              coll1.on('change', function() {
+                coll1.get(doc1.id).get('this_is_a_date').should.be.an["instanceof"](Date);
+                coll1.get(doc1.id).get('this_is_a_date').toLocaleString().should.equal(theDate.toLocaleString());
+                return done();
+              });
+              return doc1.save({
+                this_is_a_date: theDate
+              });
             });
           });
         });

@@ -201,13 +201,11 @@ class Wakeful
 
                 @trigger 'wakeful:broadcast:received', bcast
 
-                bcast.data = @parse bcast.data
-
                 switch bcast.action
                     when 'update','patch','create'
                         if this instanceof Drowsy.Document
-                            @set bcast.data
-                        else 
+                            @set @parse(bcast.data)
+                        else
                             # this is a collection
                             if _.isArray(bcast.data)
                                 docs = bcast.data
@@ -216,7 +214,10 @@ class Wakeful
                                     return
                             else
                                 docs = [bcast.data]
-                            @set(docs, remove: false)
+
+                            docs = docs.map (doc) => @model::parse(doc)
+
+                            @set docs, remove: false
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 

@@ -486,23 +486,22 @@ describe 'Wakeful', ->
             doc1 = new @TestDoc()
             coll1 = new @TestColl()
 
-            coll1.add(doc1) # doc1 must be added first, otherwise we'd get an 'add' event rather than 'change'
-
             doc1.save().done ->
-                $.when(
-                    doc1.wake(WEASEL_URL),
-                    coll1.wake(WEASEL_URL)
-                ).done ->
-                    theDate = new Date()
+                coll1.fetch().done ->
+                    $.when(
+                        doc1.wake(WEASEL_URL),
+                        coll1.wake(WEASEL_URL)
+                    ).done ->
+                        theDate = new Date()
 
-                    coll1.on 'change', ->
-                        coll1.get(doc1.id).get('this_is_a_date').should.be.an.instanceof Date
-                        coll1.get(doc1.id).get('this_is_a_date').toLocaleString().should.equal theDate.toLocaleString()
-                        done()
+                        coll1.on 'change', ->
+                            coll1.get(doc1.id).get('this_is_a_date').should.be.an.instanceof Date
+                            coll1.get(doc1.id).get('this_is_a_date').toLocaleString().should.equal theDate.toLocaleString()
+                            done()
 
-                    #doc1.set 'this_is_a_date', theDate
-                    #doc1.save()
-                    doc1.save(this_is_a_date: theDate)
+                        #doc1.set 'this_is_a_date', theDate
+                        #doc1.save()
+                        doc1.save(this_is_a_date: theDate)
 
 
 
