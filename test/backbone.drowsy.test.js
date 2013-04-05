@@ -285,6 +285,22 @@
           (parsed.date1 instanceof Date).should.be["true"];
           return parsed.meh.date2.getTime().should.equal((new Date("2013-01-24T02:01:35.151Z")).getTime());
         });
+        it("should deal with ISODates encoded as {$date: '...'} in an Array", function() {
+          var data, doc, parsed, theDate;
+          data = JSON.parse('{\
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, \
+                        "array_of_dates": [{ "$date": "2013-01-17T05:08:42.537Z" }, { "$date": "2013-01-17T05:08:42.537Z" }],\
+                        "array_of_objs_with_dates": [{"foo": { "$date": "2013-01-17T05:08:42.537Z" }}, {"foo": { "$date": "2013-01-17T05:08:42.537Z" }}]\
+                    }');
+          doc = new Drowsy.Document();
+          parsed = doc.parse(data);
+          theDate = new Date("2013-01-17T05:08:42.537Z");
+          parsed._id.should.equal("50f7875a1b85e10000000003");
+          parsed.array_of_dates[0].should.eql(theDate);
+          parsed.array_of_dates[1].should.eql(theDate);
+          parsed.array_of_objs_with_dates[0].foo.should.eql(theDate);
+          return parsed.array_of_objs_with_dates[1].foo.should.eql(theDate);
+        });
         it("should parse an array value as an array rather than an object", function() {
           var data, doc, parsed;
           data = JSON.parse('{\
@@ -337,7 +353,7 @@
           json = doc.toJSON();
           return json._id.should.equal("000000000000000000000001");
         });
-        return it("should convert Dates to {$date: '...'}", function() {
+        it("should convert Dates to {$date: '...'}", function() {
           var doc, json;
           doc = new Drowsy.Document();
           doc.set('foo', new Date("2013-01-17T05:08:42.537Z"));
@@ -355,6 +371,36 @@
           });
           json.fee.should.equal("non-date value");
           return json.boo.should.eql({});
+        });
+        return it("should convert Dates to {$date: '...'} when they're inside arrays", function() {
+          var doc, json, theDate;
+          doc = new Drowsy.Document();
+          theDate = new Date("2013-01-24T02:01:35.151Z");
+          doc.set('array_of_dates', [theDate, theDate]);
+          doc.set('array_of_objs_with_dates', [
+            {
+              foo: theDate
+            }, {
+              foo: theDate
+            }
+          ]);
+          json = doc.toJSON();
+          json.array_of_dates[0].should.eql({
+            "$date": "2013-01-24T02:01:35.151Z"
+          });
+          json.array_of_dates[1].should.eql({
+            "$date": "2013-01-24T02:01:35.151Z"
+          });
+          json.array_of_objs_with_dates[0].should.eql({
+            foo: {
+              "$date": "2013-01-24T02:01:35.151Z"
+            }
+          });
+          return json.array_of_objs_with_dates[1].should.eql({
+            foo: {
+              "$date": "2013-01-24T02:01:35.151Z"
+            }
+          });
         });
       });
       return describe("#save", function() {

@@ -179,8 +179,15 @@ class Drowsy.Document extends Backbone.Model
 
         out = {}
         for key,val of obj
-            out[key] = parser(val)
-            if _.isObject(out[key]) and not _.isArray(out[key]) and 
+            out[key] = parser(val) # give the parser a chance to deal with it first
+
+            # now see if we need recursive processing in case the parser didn't deal with it
+            if _.isArray(out[key])
+                # FIXME: kind of awkward... maybe the body of the outer foor loop should be a function?
+                for item,i in out[key]
+                    out[key][i] = parser(item)
+                    out[key][i] = @parseObjectRecursively out[key][i], parser
+            else if _.isObject(out[key]) and
                     # check that this is an object that can be iterated over (as opposed to something like a Date)
                     Object.keys(out[key]).length > 0 
                 out[key] = @parseObjectRecursively out[key], parser

@@ -316,7 +316,7 @@
 
 
     Document.prototype.parseObjectRecursively = function(obj, parser) {
-      var key, out, val;
+      var i, item, key, out, val, _i, _len, _ref;
       if (obj === null) {
         return null;
       }
@@ -324,7 +324,14 @@
       for (key in obj) {
         val = obj[key];
         out[key] = parser(val);
-        if (_.isObject(out[key]) && !_.isArray(out[key]) && Object.keys(out[key]).length > 0) {
+        if (_.isArray(out[key])) {
+          _ref = out[key];
+          for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+            item = _ref[i];
+            out[key][i] = parser(item);
+            out[key][i] = this.parseObjectRecursively(out[key][i], parser);
+          }
+        } else if (_.isObject(out[key]) && Object.keys(out[key]).length > 0) {
           out[key] = this.parseObjectRecursively(out[key], parser);
         }
       }

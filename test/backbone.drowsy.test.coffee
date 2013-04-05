@@ -211,6 +211,24 @@ describe 'Drowsy', ->
                 (parsed.date1 instanceof Date).should.be.true
                 parsed.meh.date2.getTime().should.equal (new Date("2013-01-24T02:01:35.151Z")).getTime()
 
+            it "should deal with ISODates encoded as {$date: '...'} in an Array", ->
+                data = JSON.parse '{
+                        "_id": {"$oid": "50f7875a1b85e10000000003"}, 
+                        "array_of_dates": [{ "$date": "2013-01-17T05:08:42.537Z" }, { "$date": "2013-01-17T05:08:42.537Z" }],
+                        "array_of_objs_with_dates": [{"foo": { "$date": "2013-01-17T05:08:42.537Z" }}, {"foo": { "$date": "2013-01-17T05:08:42.537Z" }}]
+                    }'
+
+                doc = new Drowsy.Document()
+                parsed = doc.parse(data)
+
+                theDate = new Date("2013-01-17T05:08:42.537Z")
+
+                parsed._id.should.equal "50f7875a1b85e10000000003"
+                parsed.array_of_dates[0].should.eql theDate
+                parsed.array_of_dates[1].should.eql theDate
+                parsed.array_of_objs_with_dates[0].foo.should.eql theDate
+                parsed.array_of_objs_with_dates[1].foo.should.eql theDate
+
             it "should parse an array value as an array rather than an object", ->
                 data = JSON.parse '{
                         "_id": {"$oid": "50f7875a1b85e10000000003"}, 
@@ -283,6 +301,18 @@ describe 'Drowsy', ->
                 json.faa.another.should.eql {"$date": "2013-01-24T02:01:35.151Z"}
                 json.fee.should.equal "non-date value"
                 json.boo.should.eql {}
+
+            it "should convert Dates to {$date: '...'} when they're inside arrays", ->
+                doc = new Drowsy.Document()
+                theDate = new Date("2013-01-24T02:01:35.151Z")
+                doc.set('array_of_dates', [theDate, theDate])
+                doc.set('array_of_objs_with_dates', [{foo: theDate}, {foo: theDate}])
+
+                json = doc.toJSON()
+                json.array_of_dates[0].should.eql "$date": "2013-01-24T02:01:35.151Z"
+                json.array_of_dates[1].should.eql "$date": "2013-01-24T02:01:35.151Z"
+                json.array_of_objs_with_dates[0].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
+                json.array_of_objs_with_dates[1].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
 
         describe "#save", ->
             it "should upsert using a client-side generated ObjectID", (done) ->
