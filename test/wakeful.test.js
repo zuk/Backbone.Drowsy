@@ -440,6 +440,29 @@
           });
         });
       });
+      it("should NOT braodcast an update when patching and no changes were made", function(done) {
+        var doc1, doc2;
+        doc1 = new this.TestDoc();
+        doc2 = new this.TestDoc();
+        return doc1.save().done(function() {
+          doc2.set('_id', doc1.id);
+          return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
+            var changeFired;
+            changeFired = false;
+            doc2.on('change', function() {
+              return changeFired = true;
+            });
+            return doc1.save({}, {
+              patch: true
+            }).done(function() {
+              return setTimeout((function() {
+                changeFired.should.be["false"];
+                return done();
+              }), 500);
+            });
+          });
+        });
+      });
       it("should NOT broadcast an update when save() is called with silent: true", function(done) {
         var doc1, doc2;
         doc1 = new this.TestDoc();

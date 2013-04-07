@@ -41,15 +41,16 @@ class Wakeful
         deferredSync = $.Deferred()
 
         changed = obj.changed
-        originalObj = obj.clone()
+        data = obj.toJSON()
 
         Backbone.sync(method, obj, options).done ->
             # TODO: figure out how to support delete
             switch method
                 when 'create','update'
-                    obj.broadcast(method, originalObj.toJSON()) unless options.silent
+                    obj.broadcast(method, data) unless options.silent
                 when 'patch'
-                    obj.broadcast(method, changed) unless options.silent
+                    unless _.isEmpty(obj) # don't broadcast when there are no changes
+                        obj.broadcast(method, changed) unless options.silent
 
             # FIXME: maybe don't resolve until .broadcast() resolves?
             deferredSync.resolve()

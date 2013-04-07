@@ -39,21 +39,23 @@
     Wakeful.subs = [];
 
     Wakeful.sync = function(method, obj, options) {
-      var changed, deferredSync, originalObj;
+      var changed, data, deferredSync;
       deferredSync = $.Deferred();
       changed = obj.changed;
-      originalObj = obj.clone();
+      data = obj.toJSON();
       Backbone.sync(method, obj, options).done(function() {
         switch (method) {
           case 'create':
           case 'update':
             if (!options.silent) {
-              obj.broadcast(method, originalObj.toJSON());
+              obj.broadcast(method, data);
             }
             break;
           case 'patch':
-            if (!options.silent) {
-              obj.broadcast(method, changed);
+            if (!_.isEmpty(obj)) {
+              if (!options.silent) {
+                obj.broadcast(method, changed);
+              }
             }
         }
         return deferredSync.resolve();
