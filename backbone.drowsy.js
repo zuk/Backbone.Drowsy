@@ -288,16 +288,9 @@
     Document.prototype.idAttribute = '_id';
 
     Document.prototype.initialize = function() {
-      if (this.get(this.idAttribute) != null) {
-        return this._isReallyNew = false;
-      } else {
-        this.set(this.idAttribute, Drowsy.generateMongoObjectId());
-        return this._isReallyNew = true;
+      if (!this.get(this.idAttribute)) {
+        return this.set(this.idAttribute, Drowsy.generateMongoObjectId());
       }
-    };
-
-    Document.prototype.isReallyNew = function() {
-      return this._isReallyNew;
     };
 
     Document.prototype.parse = function(data) {

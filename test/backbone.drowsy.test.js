@@ -248,60 +248,6 @@
       });
     });
     describe('Drowsy.Document', function() {
-      describe("#initialize", function() {
-        it("should consider the Document as 'really new' when it is created without an id", function() {
-          var data, doc1, doc2;
-          data = JSON.parse('{"_id": {"$oid": "50f7875a1b85e10000000003"}, "foo": "bar"}');
-          doc1 = new Drowsy.Document(data);
-          doc1.isReallyNew().should.be["false"];
-          doc2 = new Drowsy.Document();
-          return doc2.isReallyNew().should.be["true"];
-        });
-        return it("should NOT consider the Document as 'really new' when it is retrieved from the database", function(done) {
-          var MyDoc, db, doc, server;
-          server = new Drowsy.Server(DROWSY_URL);
-          db = new Drowsy.Database(this.server, TEST_DB);
-          MyDoc = (function(_super) {
-
-            __extends(MyDoc, _super);
-
-            function MyDoc() {
-              return MyDoc.__super__.constructor.apply(this, arguments);
-            }
-
-            return MyDoc;
-
-          })(db.Document(TEST_COLLECTION));
-          doc = new MyDoc({
-            foo: "bar"
-          });
-          return doc.save().done(function() {
-            var MyColl, coll, id;
-            id = doc.id;
-            MyColl = (function(_super) {
-
-              __extends(MyColl, _super);
-
-              function MyColl() {
-                return MyColl.__super__.constructor.apply(this, arguments);
-              }
-
-              MyColl.prototype.model = MyDoc;
-
-              return MyColl;
-
-            })(db.Collection(TEST_COLLECTION));
-            coll = new MyColl();
-            return coll.fetch().done(function() {
-              var doc2;
-              doc2 = coll.get(id);
-              doc2.get('foo').should.equal("bar");
-              doc2.isReallyNew().should.be["false"];
-              return done();
-            });
-          });
-        });
-      });
       describe("#parse", function() {
         it("should deal with ObjectID encoded as {$oid: '...'}", function() {
           var data, doc, parsed;

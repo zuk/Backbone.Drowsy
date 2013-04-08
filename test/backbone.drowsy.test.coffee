@@ -65,6 +65,7 @@ describe 'Drowsy', ->
                 @server.createDatabase(TEST_DB).done createTestCollection
 
 
+
     describe ".generateMongoObjectId", ->
         it "should generate a 24-character hex string", ->
             id = Drowsy.generateMongoObjectId()
@@ -170,37 +171,6 @@ describe 'Drowsy', ->
                 coll.url.should.match new RegExp("^" + DROWSY_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "$")
 
     describe 'Drowsy.Document', ->
-        describe "#initialize", ->
-            it "should consider the Document as 'really new' when it is created without an id", ->
-                data = JSON.parse '{"_id": {"$oid": "50f7875a1b85e10000000003"}, "foo": "bar"}'
-                doc1 = new Drowsy.Document(data)
-
-                doc1.isReallyNew().should.be.false
-
-                doc2 = new Drowsy.Document()
-
-                doc2.isReallyNew().should.be.true
-
-            it "should NOT consider the Document as 'really new' when it is retrieved from the database", (done) ->
-                server = new Drowsy.Server(DROWSY_URL)
-                db = new Drowsy.Database(@server, TEST_DB)
-
-                class MyDoc extends db.Document(TEST_COLLECTION)
-
-                doc = new MyDoc(foo: "bar")
-                doc.save().done ->
-                    id = doc.id
-                    
-                    class MyColl extends db.Collection(TEST_COLLECTION)
-                        model: MyDoc
-
-                    coll = new MyColl()
-                    coll.fetch().done ->
-                        doc2 = coll.get(id)
-                        doc2.get('foo').should.equal "bar"
-                        doc2.isReallyNew().should.be.false
-                        done()
-
         describe "#parse", ->
             it "should deal with ObjectID encoded as {$oid: '...'}", ->
                 data = JSON.parse '{"_id": {"$oid": "50f7875a1b85e10000000003"}, "foo": "bar"}'
@@ -304,6 +274,8 @@ describe 'Drowsy', ->
 
                 coll = new Drowsy.Collection()
                 parsed = coll.parse(data)
+
+                
 
 
         describe "#toJSON", ->
