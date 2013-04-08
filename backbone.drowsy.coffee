@@ -151,9 +151,22 @@ class Drowsy.Document extends Backbone.Model
     idAttribute: '_id'
     
     initialize: ->
-        @set @idAttribute, Drowsy.generateMongoObjectId()  unless @get(@idAttribute)
+        if @get(@idAttribute)?
+            @_isReallyNew = false
+        else
+            @set @idAttribute, Drowsy.generateMongoObjectId()
+            @_isReallyNew = true
         #@set "created_at", Date()  unless @get("created_at")
     
+    # Backbone is a bit dumb about what it considered to be "new" — under some circumstances
+    # (and indeed, under ALL circumstances in Backbone.Drowsy), new resources are created using
+    # a PUT rather than a POST — in other words, the URL for new resources is determined client-side
+    # rather than server-side. Backbone has no way of handling this, and we can't easily override
+    # this behaviour (i.e. for a resource being created using PUT, backbone will have isNew() === false),
+    # so we have isReallyNew() to determine whether the document really is new.
+    isReallyNew: ->
+        return @_isReallyNew
+
     parse: (data) ->
         data._id = data._id.$oid ? data._id
 
