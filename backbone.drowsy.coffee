@@ -151,8 +151,7 @@ class Drowsy.Document extends Backbone.Model
     idAttribute: '_id'
     
     initialize: ->
-        @set @idAttribute, Drowsy.generateMongoObjectId()  unless @get(@idAttribute)
-        #@set "created_at", Date()  unless @get("created_at")
+        @set @idAttribute, Drowsy.generateMongoObjectId() unless @has(@idAttribute)
     
     parse: (data) ->
         data._id = data._id.$oid ? data._id

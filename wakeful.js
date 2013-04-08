@@ -78,7 +78,7 @@
       obj.fayeUrl = fayeUrl;
       obj.broadcastEchoQueue = [];
       obj.faye = new Wakeful.Faye.Client(fayeUrl, {
-        timeout: 15
+        timeout: 35
       });
       obj.sync = Wakeful.sync;
       obj = _.extend(obj, {

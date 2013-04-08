@@ -43,7 +43,9 @@ class Wakeful
         changed = obj.changed
         data = obj.toJSON()
 
+        
         Backbone.sync(method, obj, options).done ->
+
             # TODO: figure out how to support delete
             switch method
                 when 'create','update'
@@ -70,7 +72,7 @@ class Wakeful
        
         obj.broadcastEchoQueue = []
 
-        obj.faye = new Wakeful.Faye.Client(fayeUrl, timeout: 15) # WakefulWeasel timeout is 12 seconds, so +3 here... see http://faye.jcoglan.com/browser.html
+        obj.faye = new Wakeful.Faye.Client(fayeUrl, timeout: 35) # WakefulWeasel timeout is 30 seconds, so +5 here... see http://faye.jcoglan.com/browser.html
 
         obj.sync = Wakeful.sync
 

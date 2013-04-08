@@ -288,7 +288,7 @@
     Document.prototype.idAttribute = '_id';
 
     Document.prototype.initialize = function() {
-      if (!this.get(this.idAttribute)) {
+      if (!this.has(this.idAttribute)) {
         return this.set(this.idAttribute, Drowsy.generateMongoObjectId());
       }
     };

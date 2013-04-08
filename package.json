@@ -2,7 +2,7 @@
   "name": "backbone.drowsy",
   "main": "backbone.drowsy.js",
   "preferGlobal": false,
-  "version": "0.1.4",
+  "version": "0.1.6",
   "author": "Matt Zukowski",
   "description": "Backbone Model for use with DrowsyDromedary (MongoDB) as a backend",
   "contributors": [ 
