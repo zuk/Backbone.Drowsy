@@ -171,6 +171,57 @@ describe 'Drowsy', ->
                 coll.url.should.match new RegExp("^" + DROWSY_URL.replace(/\/$/,'') + "/" + TEST_DB + "/" + TEST_COLLECTION + "$")
 
     describe 'Drowsy.Document', ->
+        describe "#dirtyAttributes", ->
+            it "should accumulate until the document is saved", (done) ->
+                class MyDoc extends @db.Document(TEST_COLLECTION)
+
+                doc = new MyDoc()
+                
+                doc.set('_id', "000000000000000000000001")
+                
+                doc.dirtyAttributes().should.eql {_id: "000000000000000000000001"}
+
+                doc.set('foo', "bar")
+                doc.dirtyAttributes().should.eql {_id: "000000000000000000000001", foo: "bar"}
+
+                doc.on 'sync', ->
+                    doc.dirtyAttributes().should.eql {}
+                    done()
+
+                doc.save()
+
+            describe "#dirtyAttributes", ->
+            it "should be per-object", (done) ->
+                class MyDoc extends @db.Document(TEST_COLLECTION)
+
+                doc1 = new MyDoc()
+                doc2 = new MyDoc()
+                
+                doc1.set('_id', "000000000000000000000001")
+                doc2.set('_id', "000000000000000000000002")
+                
+                doc1.dirtyAttributes().should.eql {_id: "000000000000000000000001"}
+                doc2.dirtyAttributes().should.eql {_id: "000000000000000000000002"}
+
+                doc1.set('foo', "bar")
+                doc1.dirtyAttributes().should.eql {_id: "000000000000000000000001", foo: "bar"}
+
+                doc2.set('bleh', "blarg")
+                doc2.dirtyAttributes().should.eql {_id: "000000000000000000000002", bleh: "blarg"}
+
+                doc1.on 'sync', ->
+                    doc1.dirtyAttributes().should.eql {}
+                    doc2.dirtyAttributes().should.eql {_id: "000000000000000000000002", bleh: "blarg"}
+
+                    doc2.on 'sync', ->
+                        doc1.dirtyAttributes().should.eql {}
+                        doc2.dirtyAttributes().should.eql {}
+                        done()
+
+                    doc2.save()
+
+                doc1.save()
+
         describe "#parse", ->
             it "should deal with ObjectID encoded as {$oid: '...'}", ->
                 data = JSON.parse '{"_id": {"$oid": "50f7875a1b85e10000000003"}, "foo": "bar"}'
@@ -316,9 +367,6 @@ describe 'Drowsy', ->
 
         describe "#save", ->
             it "should upsert using a client-side generated ObjectID", (done) ->
-                @server = new Drowsy.Server(DROWSY_URL)
-                @db = new Drowsy.Database(@server, TEST_DB)
-
                 class MyDoc extends @db.Document(TEST_COLLECTION)
 
                 doc = new MyDoc()

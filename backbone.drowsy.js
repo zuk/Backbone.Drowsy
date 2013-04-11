@@ -293,6 +293,41 @@
       }
     };
 
+    Document.prototype.set = function(key, val, options) {
+      var res, _ref;
+      res = Document.__super__.set.call(this, key, val, options);
+      if ((_ref = this.dirty) == null) {
+        this.dirty = {};
+      }
+      _.extend(this.dirty, this.changedAttributes());
+      return res;
+    };
+
+    Document.prototype.sync = function(method, model, options) {
+      var res;
+      res = Document.__super__.sync.call(this, method, model, options);
+      this.dirty = {};
+      return res;
+    };
+
+    Document.prototype.reset = function() {
+      var res;
+      res = Document.__super__.reset.call(this);
+      this.dirty = {};
+      return res;
+    };
+
+    Document.prototype.fetch = function(options) {
+      var res;
+      res = Document.__super__.fetch.call(this);
+      this.dirty = {};
+      return res;
+    };
+
+    Document.prototype.dirtyAttributes = function() {
+      return this.dirty;
+    };
+
     Document.prototype.parse = function(data) {
       var parsed, _ref;
       data._id = (_ref = data._id.$oid) != null ? _ref : data._id;

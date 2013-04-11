@@ -152,7 +152,31 @@ class Drowsy.Document extends Backbone.Model
     
     initialize: ->
         @set @idAttribute, Drowsy.generateMongoObjectId() unless @has(@idAttribute)
-    
+
+    set: (key, val, options) ->
+        res = super(key, val, options)
+        @dirty ?= {}
+        _.extend(@dirty, @changedAttributes())
+        return res
+
+    sync: (method, model, options) ->
+        res = super(method, model, options)
+        @dirty = {}
+        return res
+
+    reset: ->
+        res = super()
+        @dirty = {}
+        return res
+
+    fetch: (options) ->
+        res = super()
+        @dirty = {}
+        return res
+
+    dirtyAttributes: ->
+        @dirty
+
     parse: (data) ->
         data._id = data._id.$oid ? data._id
 

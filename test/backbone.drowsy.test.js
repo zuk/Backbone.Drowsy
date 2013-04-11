@@ -248,6 +248,86 @@
       });
     });
     describe('Drowsy.Document', function() {
+      describe("#dirtyAttributes", function() {
+        it("should accumulate until the document is saved", function(done) {
+          var MyDoc, doc;
+          MyDoc = (function(_super) {
+
+            __extends(MyDoc, _super);
+
+            function MyDoc() {
+              return MyDoc.__super__.constructor.apply(this, arguments);
+            }
+
+            return MyDoc;
+
+          })(this.db.Document(TEST_COLLECTION));
+          doc = new MyDoc();
+          doc.set('_id', "000000000000000000000001");
+          doc.dirtyAttributes().should.eql({
+            _id: "000000000000000000000001"
+          });
+          doc.set('foo', "bar");
+          doc.dirtyAttributes().should.eql({
+            _id: "000000000000000000000001",
+            foo: "bar"
+          });
+          doc.on('sync', function() {
+            doc.dirtyAttributes().should.eql({});
+            return done();
+          });
+          return doc.save();
+        });
+        describe("#dirtyAttributes", function() {});
+        return it("should be per-object", function(done) {
+          var MyDoc, doc1, doc2;
+          MyDoc = (function(_super) {
+
+            __extends(MyDoc, _super);
+
+            function MyDoc() {
+              return MyDoc.__super__.constructor.apply(this, arguments);
+            }
+
+            return MyDoc;
+
+          })(this.db.Document(TEST_COLLECTION));
+          doc1 = new MyDoc();
+          doc2 = new MyDoc();
+          doc1.set('_id', "000000000000000000000001");
+          doc2.set('_id', "000000000000000000000002");
+          doc1.dirtyAttributes().should.eql({
+            _id: "000000000000000000000001"
+          });
+          doc2.dirtyAttributes().should.eql({
+            _id: "000000000000000000000002"
+          });
+          doc1.set('foo', "bar");
+          doc1.dirtyAttributes().should.eql({
+            _id: "000000000000000000000001",
+            foo: "bar"
+          });
+          doc2.set('bleh', "blarg");
+          doc2.dirtyAttributes().should.eql({
+            _id: "000000000000000000000002",
+            bleh: "blarg"
+          });
+          doc1.on('sync', function() {
+            doc1.dirtyAttributes().should.eql({});
+            doc2.dirtyAttributes().should.eql({
+              _id: "000000000000000000000002",
+              bleh: "blarg"
+            });
+            doc2.on('sync', function() {
+              doc1.dirtyAttributes().should.eql({});
+              doc2.dirtyAttributes().should.eql({});
+              return done();
+            });
+            return doc2.save();
+          });
+          return doc1.save();
+        });
+      });
       describe("#parse", function() {
         it("should deal with ObjectID encoded as {$oid: '...'}", function() {
           var data, doc, parsed;
@@ -406,8 +486,6 @@
       return describe("#save", function() {
         return it("should upsert using a client-side generated ObjectID", function(done) {
           var MyDoc, doc;
-          this.server = new Drowsy.Server(DROWSY_URL);
-          this.db = new Drowsy.Database(this.server, TEST_DB);
           MyDoc = (function(_super) {
 
             __extends(MyDoc, _super);
