@@ -55,8 +55,11 @@ describe 'Wakeful', ->
         @TestColl = TestColl
 
     afterEach ->
-        for sub in Wakeful.subs
-            sub.cancel()
+        # for sub in Wakeful.subs
+        #     sub.cancel()
+
+        for url,client of Wakeful.fayeClients
+            client.disconnect()
         
 
     describe ".wake", ->
@@ -246,8 +249,7 @@ describe 'Wakeful', ->
                         dsubA = Wakeful.wake doc1, WEASEL_URL
                         dsubB = Wakeful.wake doc2, WEASEL_URL
 
-                        dsubA.state().should.equal 'pending'
-                        dsubB.state().should.equal 'pending'
+                        # note that these will probably already be subscribed
                         
                         # when both have subscribed
                         $.when(dsubA, dsubB).done ->

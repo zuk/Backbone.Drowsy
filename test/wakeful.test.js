@@ -86,12 +86,12 @@
       return this.TestColl = TestColl;
     });
     afterEach(function() {
-      var sub, _i, _len, _ref, _results;
-      _ref = Wakeful.subs;
+      var client, url, _ref, _results;
+      _ref = Wakeful.fayeClients;
       _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        sub = _ref[_i];
-        _results.push(sub.cancel());
+      for (url in _ref) {
+        client = _ref[url];
+        _results.push(client.disconnect());
       }
       return _results;
     });
@@ -238,8 +238,6 @@
               var dsubA, dsubB;
               dsubA = Wakeful.wake(doc1, WEASEL_URL);
               dsubB = Wakeful.wake(doc2, WEASEL_URL);
-              dsubA.state().should.equal('pending');
-              dsubB.state().should.equal('pending');
               return $.when(dsubA, dsubB).done(function() {
                 var bc, rand;
                 rand = Math.random();

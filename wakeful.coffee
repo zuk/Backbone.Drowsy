@@ -32,6 +32,9 @@ class Wakeful
     if Faye?
         @Faye = Faye
 
+    unless Wakeful.fayeClients?
+        Wakeful.fayeClients = {}
+
     # A list of all Faye.Subscriptions crated by Wakeful objects.
     # We keep this list in order to close all subs at the end of each
     # test/spec.
@@ -72,7 +75,12 @@ class Wakeful
        
         obj.broadcastEchoQueue = []
 
-        obj.faye = new Wakeful.Faye.Client(fayeUrl, timeout: 35) # WakefulWeasel timeout is 30 seconds, so +5 here... see http://faye.jcoglan.com/browser.html
+        unless Wakeful.fayeClients[fayeUrl]? and
+                Wakeful.fayeClients[fayeUrl].getState() in ['CONNECTED', 'CONNECTING']
+            
+            Wakeful.fayeClients[fayeUrl] = new Wakeful.Faye.Client(fayeUrl, timeout: 35) # WakefulWeasel timeout is 30 seconds, so +5 here... see http://faye.jcoglan.com/browser.html
+        
+        obj.faye = Wakeful.fayeClients[fayeUrl]
 
         obj.sync = Wakeful.sync
 
@@ -113,6 +121,7 @@ class Wakeful
                     throw new Error("Cannot call tunein() on Drowsy.Document because it has not yet been assigned an id", this)
 
                 deferredSub = $.Deferred()
+                
                 @sub = @faye.subscribe @subscriptionUrl(), _.bind(@receiveBroadcast, this)
 
                 @sub.callback ->
@@ -154,12 +163,13 @@ class Wakeful
                     data: data
                     bid: bid
                     origin: @origin()
-
+                
                 @broadcastEchoQueue.push(deferredPub)
 
                 toChannel = @subscriptionUrl()
                 if this instanceof Drowsy.Collection
                     toChannel = toChannel.replace(/\*$/,'~') # hack to get channel subscription to hear its own broadcasts
+                
                 pub = @faye.publish toChannel, bcast
 
                 @trigger 'wakeful:broadcast:sent', bcast
@@ -198,9 +208,9 @@ class Wakeful
                 
                 # FIXME: this probably doesn't actually do anything since messages to
                 #   self would be caught by the echoOf check
-                if bcast.origin? and bcast.origin is @origin()
-                    console.warn @origin(),"received broadcast from self... how did this happen?"
-                    return
+                # if bcast.origin? and bcast.origin is @origin()
+                #     console.warn @origin(),"received broadcast from self... how did this happen?"
+                #     return
 
                 @trigger 'wakeful:broadcast:received', bcast
 

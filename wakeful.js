@@ -36,6 +36,10 @@
       Wakeful.Faye = Faye;
     }
 
+    if (Wakeful.fayeClients == null) {
+      Wakeful.fayeClients = {};
+    }
+
     Wakeful.subs = [];
 
     Wakeful.sync = function(method, obj, options) {
@@ -64,7 +68,8 @@
     };
 
     Wakeful.wake = function(obj, fayeUrl, options) {
-      var _this = this;
+      var _ref,
+        _this = this;
       if (options == null) {
         options = {};
       }
@@ -77,9 +82,12 @@
       }
       obj.fayeUrl = fayeUrl;
       obj.broadcastEchoQueue = [];
-      obj.faye = new Wakeful.Faye.Client(fayeUrl, {
-        timeout: 35
-      });
+      if (!((Wakeful.fayeClients[fayeUrl] != null) && ((_ref = Wakeful.fayeClients[fayeUrl].getState()) === 'CONNECTED' || _ref === 'CONNECTING'))) {
+        Wakeful.fayeClients[fayeUrl] = new Wakeful.Faye.Client(fayeUrl, {
+          timeout: 35
+        });
+      }
+      obj.faye = Wakeful.fayeClients[fayeUrl];
       obj.sync = Wakeful.sync;
       obj = _.extend(obj, {
         subscriptionUrl: function() {
@@ -170,10 +178,6 @@
             this.broadcastEchoQueue.splice(echoIndex, 1);
             this.trigger('wakeful:broadcast:echo', bcast);
             echoOf.resolve();
-            return;
-          }
-          if ((bcast.origin != null) && bcast.origin === this.origin()) {
-            console.warn(this.origin(), "received broadcast from self... how did this happen?");
             return;
           }
           this.trigger('wakeful:broadcast:received', bcast);
