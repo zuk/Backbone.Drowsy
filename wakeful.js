@@ -45,25 +45,27 @@
     Wakeful.sync = function(method, obj, options) {
       var changed, data, deferredSync;
       deferredSync = $.Deferred();
-      changed = obj.changed;
       data = obj.toJSON();
-      Backbone.sync(method, obj, options).done(function() {
+      if (method === 'read') {
+        Backbone.sync(method, obj, options).done(function() {
+          return deferredSync.resolve();
+        });
+      } else {
         switch (method) {
           case 'create':
           case 'update':
-            if (!options.silent) {
-              obj.broadcast(method, data);
-            }
+            obj.broadcast(method, data);
             break;
           case 'patch':
-            if (!_.isEmpty(obj)) {
-              if (!options.silent) {
-                obj.broadcast(method, changed);
-              }
+            changed = obj.dirtyAttributes();
+            delete changed._id;
+            if (!_.isEmpty(changed)) {
+              obj.broadcast(method, changed);
             }
         }
-        return deferredSync.resolve();
-      });
+        this.trigger('sync', obj, changed != null ? changed : data, options);
+        deferredSync.resolve();
+      }
       return deferredSync;
     };
 

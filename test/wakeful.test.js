@@ -461,34 +461,6 @@
           });
         });
       });
-      it("should NOT broadcast an update when save() is called with silent: true", function(done) {
-        var doc1, doc2;
-        doc1 = new this.TestDoc();
-        doc2 = new this.TestDoc();
-        return doc1.save().done(function() {
-          doc2.set('_id', doc1.id);
-          return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
-            var changeFired;
-            changeFired = false;
-            doc2.on('change', function() {
-              doc2.get('foo').should.equal('ALPHA');
-              return changeFired = true;
-            });
-            doc1.set('foo', 'BETA');
-            return doc1.save({
-              foo: 'ALPHA',
-              bar: 'a'
-            }, {
-              silent: true
-            }).done(function() {
-              return setTimeout((function() {
-                changeFired.should.be["false"];
-                return done();
-              }), 500);
-            });
-          });
-        });
-      });
       it("should correctly sync an update with a Date ($date) object", function(done) {
         var doc1, doc2;
         doc1 = new this.TestDoc();

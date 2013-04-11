@@ -43,21 +43,24 @@ class Wakeful
     @sync: (method, obj, options) ->
         deferredSync = $.Deferred()
 
-        changed = obj.changed
         data = obj.toJSON()
 
-        
-        Backbone.sync(method, obj, options).done ->
-
+        if method is 'read'
+            Backbone.sync(method, obj, options).done ->
+                deferredSync.resolve()
+        else
             # TODO: figure out how to support delete
             switch method
-                when 'create','update'
-                    obj.broadcast(method, data) unless options.silent
+                when 'create', 'update'
+                    obj.broadcast(method, data)
                 when 'patch'
-                    unless _.isEmpty(obj) # don't broadcast when there are no changes
-                        obj.broadcast(method, changed) unless options.silent
+                    changed = obj.dirtyAttributes()
+                    delete changed._id # id can't change
+                    unless _.isEmpty(changed) # don't broadcast when there are no changes
+                        obj.broadcast(method, changed)
 
-            # FIXME: maybe don't resolve until .broadcast() resolves?
+            # FIXME: maybe don't resolve and emit until .broadcast() resolves?
+            @trigger('sync', obj, changed ? data, options)
             deferredSync.resolve()
 
         return deferredSync
