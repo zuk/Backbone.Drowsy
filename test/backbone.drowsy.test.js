@@ -499,16 +499,12 @@
           })(this.db.Document(TEST_COLLECTION));
           doc = new MyDoc();
           console.log("Doc URL is:", doc.url());
-          return doc.save({}, {
-            success: function(data, status, xhr) {},
-            error: function(data, xhr) {
-              console.log(xhr);
-              return console.log("Doc save error:", JSON.parse(xhr.responseText).error);
-            },
-            complete: function(xhr, status) {
-              xhr.status.should.equal(200);
-              return done();
-            }
+          return doc.save().fail(function(data, xhr) {
+            console.log(xhr);
+            return console.log("Doc save error:", JSON.parse(xhr.responseText).error);
+          }).always(function(xhr, status) {
+            status.should.equal("success");
+            return done();
           });
         });
       });

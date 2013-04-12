@@ -365,6 +365,7 @@ describe 'Drowsy', ->
                 json.array_of_objs_with_dates[0].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
                 json.array_of_objs_with_dates[1].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
 
+        
         describe "#save", ->
             it "should upsert using a client-side generated ObjectID", (done) ->
                 class MyDoc extends @db.Document(TEST_COLLECTION)
@@ -374,14 +375,12 @@ describe 'Drowsy', ->
                 console.log "Doc URL is:", doc.url()
 
                 #doc.on 'all', (args...) -> console.log(args)
-                doc.save {},
-                    success: (data, status, xhr) -> 
-                    
-                    error: (data, xhr) ->
+                doc.save()
+                    .fail (data, xhr) ->
                         console.log xhr
                         console.log "Doc save error:",JSON.parse(xhr.responseText).error
-                    complete: (xhr, status) ->
-                        xhr.status.should.equal 200
+                    .always (xhr, status) ->
+                        status.should.equal "success"
                         done()
 
     describe 'Drowsy.Collection', ->
