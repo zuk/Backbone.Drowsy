@@ -41,7 +41,7 @@ if TEST_USERNAME? and TEST_PASSWORD?
                 'Basic ' + btoa(TEST_USERNAME+':'+TEST_PASSWORD);
 
 describe 'Wakeful', ->
-    @timeout 3000
+    @timeout 6000
     @slow 1000
 
     before ->
@@ -504,6 +504,28 @@ describe 'Wakeful', ->
 
                     doc1.save()
 
+        it "should correctly sync a PATCH update with a Date ($date) object", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            doc1.save().done ->
+                doc2.set '_id', doc1.id
+
+                $.when(
+                    doc1.wake(WEASEL_URL),
+                    doc2.wake(WEASEL_URL)
+                ).done ->
+                    theDate = new Date()
+
+                    doc2.on 'change', ->
+                        doc2.get('this_is_a_date').should.be.an.instanceof Date
+                        doc2.get('this_is_a_date').toLocaleString().should.equal theDate.toLocaleString()
+                        done()
+
+                    doc1.set 'this_is_a_date', theDate
+
+                    doc1.save({}, {patch: true})
+
         it "should correctly sync an update with a Date ($date) object when the receiver is a Collection", (done) ->
             doc1 = new @TestDoc()
             coll1 = new @TestColl()
@@ -525,6 +547,72 @@ describe 'Wakeful', ->
                         #doc1.save()
                         doc1.save(this_is_a_date: theDate)
 
+        it "should trigger a 'sync' event on successful fetch() and save()", (done) ->
+            doc1 = new @TestDoc()
 
+            doc1.wake(WEASEL_URL).done ->
+
+                saveSync1 = false
+                saveSync2 = false
+                fetchSync = false
+
+                doc1.once 'sync', ->
+                    saveSync1 = true
+
+                doc1.save().done ->
+                    doc1.once 'sync', ->
+                        fetchSync = true
+
+                    doc1.fetch().done ->
+                        doc1.once 'sync', ->
+                            saveSync2 = true
+
+                            saveSync1.should.be.true
+                            saveSync2.should.be.true
+                            fetchSync.should.be.true
+
+                            done()
+
+                        doc1.save({}, patch: true)
+
+        it "should clear dirtyAttributes on successful save() and fetch()", (done) ->
+            doc1 = new @TestDoc()
+            doc2 = new @TestDoc()
+
+            $.when(
+                doc1.wake(WEASEL_URL),
+                doc2.wake(WEASEL_URL)
+            ).done ->
+
+                doc1.set('foo', 1)
+                doc2.set('foo', 'a') # want to make sure that dirtyAttributes reset is per-instance
+                
+                doc1.dirtyAttributes().should.eql {_id: doc1.id, foo: 1}
+                doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+
+                doc1.once 'sync', ->
+                    doc1.dirtyAttributes().should.eql {}
+                    doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+
+                    doc1.set('foo', 2)
+
+                    doc1.once 'sync', ->
+                        doc1.dirtyAttributes().should.eql {}
+                        doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+
+                        doc1.set('foo', 3)
+
+                        doc1.once 'sync', ->
+                            doc1.dirtyAttributes().should.eql {}
+                            doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+
+                            done()
+
+                        doc1.save({}, patch: true)
+
+                    doc1.fetch()
+
+                doc1.save()
+                
 
         

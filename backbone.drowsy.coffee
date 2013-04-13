@@ -169,9 +169,16 @@ class Drowsy.Document extends Backbone.Model
         @dirty = {}
         return res
 
-    fetch: (options) ->
-        res = super()
-        @dirty = {}
+    fetch: (options = {}) ->
+        # FIXME: couldn't think of a better way to do this... couldn't use deferred because
+        #        .done() fires after 'sync' is triggered so it's too late
+        #       ... also should we do this on 'always' or just 'success'?
+        originalSuccess = options.success
+        options.success = (doc, data, xhr) =>
+            originalSuccess(doc,data,xhr) if originalSuccess?
+            @dirty = {}
+
+        res = super(options)
         return res
 
     dirtyAttributes: ->

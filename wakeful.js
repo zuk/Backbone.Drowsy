@@ -43,11 +43,12 @@
     Wakeful.subs = [];
 
     Wakeful.sync = function(method, obj, options) {
-      var changed, data, deferredSync;
+      var changed, changedJSON, data, deferredSync, temp;
       deferredSync = $.Deferred();
       data = obj.toJSON();
       if (method === 'read') {
         Backbone.sync(method, obj, options).done(function() {
+          obj.dirty = {};
           return deferredSync.resolve();
         });
       } else {
@@ -58,12 +59,13 @@
             break;
           case 'patch':
             changed = obj.dirtyAttributes();
-            delete changed._id;
-            if (!_.isEmpty(changed)) {
-              obj.broadcast(method, changed);
-            }
+            temp = new Drowsy.Document(changed);
+            changedJSON = temp.toJSON();
+            delete changedJSON._id;
+            obj.broadcast(method, changedJSON);
         }
-        this.trigger('sync', obj, changed != null ? changed : data, options);
+        obj.dirty = {};
+        obj.trigger('sync', obj, changed != null ? changed : data, options);
         deferredSync.resolve();
       }
       return deferredSync;

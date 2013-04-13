@@ -47,6 +47,7 @@ class Wakeful
 
         if method is 'read'
             Backbone.sync(method, obj, options).done ->
+                obj.dirty = {}
                 deferredSync.resolve()
         else
             # TODO: figure out how to support delete
@@ -55,12 +56,20 @@ class Wakeful
                     obj.broadcast(method, data)
                 when 'patch'
                     changed = obj.dirtyAttributes()
-                    delete changed._id # id can't change
-                    unless _.isEmpty(changed) # don't broadcast when there are no changes
-                        obj.broadcast(method, changed)
 
-            # FIXME: maybe don't resolve and emit until .broadcast() resolves?
-            @trigger('sync', obj, changed ? data, options)
+                    #unless _.isEmpty(changedJSON) # don't broadcast when there are no changes
+
+                    # FIXME: hacky and inefficent way to make sure changed attributes are JSONified correctly
+                    temp = new Drowsy.Document(changed)
+                    changedJSON = temp.toJSON()
+
+                    delete changedJSON._id # id can't change
+
+                    obj.broadcast(method, changedJSON)
+
+            # FIXME: maybe don't resolve and trigger until .broadcast() resolves?
+            obj.dirty = {}
+            obj.trigger('sync', obj, changed ? data, options)
             deferredSync.resolve()
 
         return deferredSync

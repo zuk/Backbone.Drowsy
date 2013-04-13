@@ -318,9 +318,19 @@
     };
 
     Document.prototype.fetch = function(options) {
-      var res;
-      res = Document.__super__.fetch.call(this);
-      this.dirty = {};
+      var originalSuccess, res,
+        _this = this;
+      if (options == null) {
+        options = {};
+      }
+      originalSuccess = options.success;
+      options.success = function(doc, data, xhr) {
+        if (originalSuccess != null) {
+          originalSuccess(doc, data, xhr);
+        }
+        return _this.dirty = {};
+      };
+      res = Document.__super__.fetch.call(this, options);
       return res;
     };
 
