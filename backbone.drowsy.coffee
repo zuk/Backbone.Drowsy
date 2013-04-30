@@ -207,22 +207,19 @@ class Drowsy.Document extends Backbone.Model
     parseObjectRecursively: (obj, parser) ->
         return null if obj is null
 
-        out = {}
-        for key,val of obj
-            out[key] = parser(val) # give the parser a chance to deal with it first
+        out = parser obj
 
-            # now see if we need recursive processing in case the parser didn't deal with it
-            if _.isArray(out[key])
-                # FIXME: kind of awkward... maybe the body of the outer foor loop should be a function?
-                for item,i in out[key]
-                    out[key][i] = parser(item)
-                    out[key][i] = @parseObjectRecursively out[key][i], parser
-            else if _.isObject(out[key]) and
-                    # check that this is an object that can be iterated over (as opposed to something like a Date)
-                    Object.keys(out[key]).length > 0 
-                out[key] = @parseObjectRecursively out[key], parser
+        # now see if we need recursive processing in case the parser didn't deal with it
+        if _.isArray out
+            for item,i in out
+                out[i] = @parseObjectRecursively out[i], parser
+        else if _.isObject(out) and
+                # check that this is an object that can be iterated over (as opposed to something like a Date)
+                Object.keys(out).length > 0
+            for key,val of out
+                out[key] = @parseObjectRecursively val, parser
         
-        out
+        return out
 
     jsonToDate: (val) ->
         if val? and val.$date?

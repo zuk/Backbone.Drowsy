@@ -361,23 +361,20 @@
 
 
     Document.prototype.parseObjectRecursively = function(obj, parser) {
-      var i, item, key, out, val, _i, _len, _ref;
+      var i, item, key, out, val, _i, _len;
       if (obj === null) {
         return null;
       }
-      out = {};
-      for (key in obj) {
-        val = obj[key];
-        out[key] = parser(val);
-        if (_.isArray(out[key])) {
-          _ref = out[key];
-          for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
-            item = _ref[i];
-            out[key][i] = parser(item);
-            out[key][i] = this.parseObjectRecursively(out[key][i], parser);
-          }
-        } else if (_.isObject(out[key]) && Object.keys(out[key]).length > 0) {
-          out[key] = this.parseObjectRecursively(out[key], parser);
+      out = parser(obj);
+      if (_.isArray(out)) {
+        for (i = _i = 0, _len = out.length; _i < _len; i = ++_i) {
+          item = out[i];
+          out[i] = this.parseObjectRecursively(out[i], parser);
+        }
+      } else if (_.isObject(out) && Object.keys(out).length > 0) {
+        for (key in out) {
+          val = out[key];
+          out[key] = this.parseObjectRecursively(val, parser);
         }
       }
       return out;

@@ -388,8 +388,10 @@
                         "foo": "bar",\
                         "arr": [\
                             {"foo": "bar"},\
-                            {"joo": "gar"}\
+                            {"joo": "gar"},\
+                            "foobar"\
                         ],\
+                        "arr2": ["apple", "banana", 1, 2],\
                         "obj": {\
                             "0": {"foo": "bar"},\
                             "1": {"joo": "gar"}\
@@ -399,6 +401,8 @@
           parsed = doc.parse(data);
           parsed.arr.should.be.an('array');
           parsed.arr[1].joo.should.equal('gar');
+          parsed.arr[2].should.equal('foobar');
+          parsed.arr2[1].should.equal('banana');
           parsed.obj.should.be.an('object');
           return parsed.obj[1].joo.should.equal('gar');
         });
@@ -452,7 +456,7 @@
           json.fee.should.equal("non-date value");
           return json.boo.should.eql({});
         });
-        return it("should convert Dates to {$date: '...'} when they're inside arrays", function() {
+        it("should convert Dates to {$date: '...'} when they're inside arrays", function() {
           var doc, json, theDate;
           doc = new Drowsy.Document();
           theDate = new Date("2013-01-24T02:01:35.151Z");
@@ -480,6 +484,27 @@
             foo: {
               "$date": "2013-01-24T02:01:35.151Z"
             }
+          });
+        });
+        return it("should convert arrays of literals as arrays of literals", function() {
+          var doc, json;
+          doc = new Drowsy.Document();
+          doc.set('array_of_strings', ["abc", "def", "ghi"]);
+          doc.set('array_of_integers', [1, 2, 3, 4]);
+          doc.set('mixed_array', [
+            "abc", 42, {
+              "foo": "bar"
+            }
+          ]);
+          json = doc.toJSON();
+          json.array_of_strings[0].should.eql("abc");
+          json.array_of_strings[2].should.eql("ghi");
+          json.array_of_integers[0].should.eql(1);
+          json.array_of_integers[3].should.eql(4);
+          json.mixed_array[0].should.eql("abc");
+          json.mixed_array[1].should.eql(42);
+          return json.mixed_array[2].should.eql({
+            "foo": "bar"
           });
         });
       });

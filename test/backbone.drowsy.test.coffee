@@ -286,8 +286,10 @@ describe 'Drowsy', ->
                         "foo": "bar",
                         "arr": [
                             {"foo": "bar"},
-                            {"joo": "gar"}
+                            {"joo": "gar"},
+                            "foobar"
                         ],
+                        "arr2": ["apple", "banana", 1, 2],
                         "obj": {
                             "0": {"foo": "bar"},
                             "1": {"joo": "gar"}
@@ -296,12 +298,16 @@ describe 'Drowsy', ->
 
                 doc = new Drowsy.Document()
                 parsed = doc.parse(data)
-
+                
                 parsed.arr.should.be.an 'array'
                 parsed.arr[1].joo.should.equal 'gar'
 
+                parsed.arr[2].should.equal 'foobar'
+                parsed.arr2[1].should.equal 'banana'
+
                 parsed.obj.should.be.an 'object'
                 parsed.obj[1].joo.should.equal 'gar'
+
 
             it "should parse an object with a keys with null values", ->
                 data = JSON.parse '{
@@ -364,6 +370,21 @@ describe 'Drowsy', ->
                 json.array_of_dates[1].should.eql "$date": "2013-01-24T02:01:35.151Z"
                 json.array_of_objs_with_dates[0].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
                 json.array_of_objs_with_dates[1].should.eql foo: {"$date": "2013-01-24T02:01:35.151Z"}
+
+            it "should convert arrays of literals as arrays of literals", ->
+                doc = new Drowsy.Document()
+                doc.set('array_of_strings', ["abc", "def", "ghi"])
+                doc.set('array_of_integers', [1, 2, 3, 4])
+                doc.set('mixed_array', ["abc", 42, {"foo": "bar"}])
+
+                json = doc.toJSON()
+                json.array_of_strings[0].should.eql "abc"
+                json.array_of_strings[2].should.eql "ghi"
+                json.array_of_integers[0].should.eql 1
+                json.array_of_integers[3].should.eql 4
+                json.mixed_array[0].should.eql "abc"
+                json.mixed_array[1].should.eql 42
+                json.mixed_array[2].should.eql "foo": "bar"
 
         
         describe "#save", ->
