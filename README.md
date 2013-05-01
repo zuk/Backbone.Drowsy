@@ -95,7 +95,7 @@ var doc = new MyModel();
 
 var weaselUrl = "http://localhost:7777/faye";
 
-Wakeful.wake(doc, weaselUrl);
+doc.wake(weaselUrl);
 ```
 
 `.wake()` imbues the Document or Collection with special `Backbone.sync`
