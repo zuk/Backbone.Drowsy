@@ -137,6 +137,8 @@
 
       this.Document = __bind(this.Document, this);
 
+      this.dropCollection = __bind(this.dropCollection, this);
+
       this.createCollection = __bind(this.createCollection, this);
 
       this.collections = __bind(this.collections, this);
@@ -217,6 +219,26 @@
         }
       });
       return deferredCreate;
+    };
+
+    Database.prototype.dropCollection = function(collectionName, after) {
+      var deferredDrop,
+        _this = this;
+      deferredDrop = $.Deferred();
+      return Backbone.ajax({
+        url: this.url + "/" + collectionName,
+        type: 'DELETE'
+      }).done(function(data, status, xhr) {
+        deferredDrop.resolve(status, xhr);
+        if (after != null) {
+          return after(status);
+        }
+      }).fail(function(xhr, status) {
+        deferredDrop.reject(xhr);
+        if (after != null) {
+          return after('failed');
+        }
+      });
     };
 
     Database.prototype.Document = function(collectionName) {

@@ -132,6 +132,19 @@ class Drowsy.Database # this should be anonymous, but we're naming it for clarit
 
         return deferredCreate
 
+    dropCollection: (collectionName, after) =>
+        deferredDrop = $.Deferred()
+
+        Backbone.ajax
+            url: @url + "/" + collectionName
+            type: 'DELETE'
+        .done (data, status, xhr) =>
+            deferredDrop.resolve(status, xhr)
+            after(status) if after?
+        .fail (xhr, status) => 
+            deferredDrop.reject(xhr)
+            after('failed') if after?
+
     Document: (collectionName) =>
         db = @
         class extends Drowsy.Document # this should be anonymous, but we're naming it for clarity in debugging

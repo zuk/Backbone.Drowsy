@@ -137,10 +137,25 @@ describe 'Drowsy', ->
                     done()
 
             it "should return a deferred and resolve to 'created' or 'already_exists'", (done) ->
-                @db.createCollection(TEST_COLLECTION).always (result, xhr) ->
+                @db.createCollection(TEST_COLLECTION).always (result, status, xhr) ->
                     result.should.match /created|already_exists/
                     @state().should.equal 'resolved'
                     done()
+
+        describe '#dropCollection', ->
+            it "should drop the given collection from this database", (done) ->
+                @db.createCollection TEST_COLLECTION+"to-drop", (result) =>
+                    @db.dropCollection TEST_COLLECTION+"to-drop", (result) ->
+                        result.should.match /success/
+                        done()
+
+            it "should return a deferred and resolve to 'deleted'", (done) ->
+                @db.createCollection TEST_COLLECTION+"to-drop", (result) =>
+                    @db.dropCollection(TEST_COLLECTION+"to-drop").always (result, status, xhr) ->
+                        console.log(arguments)
+                        #result.should.match /deleted/
+                        xhr.state().should.equal 'resolved'
+                        done()
 
         describe "#Document", ->
             it "should return a Drowsy.Document class with the given collectionName", ->

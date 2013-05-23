@@ -169,10 +169,31 @@
           });
         });
         return it("should return a deferred and resolve to 'created' or 'already_exists'", function(done) {
-          return this.db.createCollection(TEST_COLLECTION).always(function(result, xhr) {
+          return this.db.createCollection(TEST_COLLECTION).always(function(result, status, xhr) {
             result.should.match(/created|already_exists/);
             this.state().should.equal('resolved');
             return done();
+          });
+        });
+      });
+      describe('#dropCollection', function() {
+        it("should drop the given collection from this database", function(done) {
+          var _this = this;
+          return this.db.createCollection(TEST_COLLECTION + "to-drop", function(result) {
+            return _this.db.dropCollection(TEST_COLLECTION + "to-drop", function(result) {
+              result.should.match(/success/);
+              return done();
+            });
+          });
+        });
+        return it("should return a deferred and resolve to 'deleted'", function(done) {
+          var _this = this;
+          return this.db.createCollection(TEST_COLLECTION + "to-drop", function(result) {
+            return _this.db.dropCollection(TEST_COLLECTION + "to-drop").always(function(result, status, xhr) {
+              console.log(arguments);
+              xhr.state().should.equal('resolved');
+              return done();
+            });
           });
         });
       });
