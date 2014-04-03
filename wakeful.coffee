@@ -229,7 +229,7 @@ class Wakeful
                 @trigger 'wakeful:broadcast:received', bcast
 
                 switch bcast.action
-                    when 'update','patch','create','delete'
+                    when 'update','patch','create'
                         if this instanceof Drowsy.Document
                             @set @parse(bcast.data)
                         else
@@ -245,6 +245,12 @@ class Wakeful
                             docs = docs.map (doc) => @model::parse(doc)
 
                             @set docs, remove: false
+                    when 'delete'
+                        if this instanceof Drowsy.Document
+                            @destroy({wait:true})
+                        else
+                            if @get(bcast.data._id)
+                                @get(bcast.data._id).destroy(wait:true)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 

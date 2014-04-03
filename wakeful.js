@@ -192,7 +192,6 @@
             case 'update':
             case 'patch':
             case 'create':
-            case 'delete':
               if (this instanceof Drowsy.Document) {
                 return this.set(this.parse(bcast.data));
               } else {
@@ -211,6 +210,19 @@
                 return this.set(docs, {
                   remove: false
                 });
+              }
+              break;
+            case 'delete':
+              if (this instanceof Drowsy.Document) {
+                return this.destroy({
+                  wait: true
+                });
+              } else {
+                if (this.get(bcast.data._id)) {
+                  return this.get(bcast.data._id).destroy({
+                    wait: true
+                  });
+                }
               }
               break;
             default:
