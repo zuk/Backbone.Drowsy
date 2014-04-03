@@ -63,6 +63,9 @@
             changedJSON = temp.toJSON();
             delete changedJSON._id;
             obj.broadcast(method, changedJSON);
+            break;
+          case 'delete':
+            obj.broadcast(method, obj);
         }
         obj.dirty = {};
         obj.trigger('sync', obj, changed != null ? changed : data, options);
@@ -189,6 +192,7 @@
             case 'update':
             case 'patch':
             case 'create':
+            case 'delete':
               if (this instanceof Drowsy.Document) {
                 return this.set(this.parse(bcast.data));
               } else {
