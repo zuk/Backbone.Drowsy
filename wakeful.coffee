@@ -46,7 +46,14 @@ class Wakeful
         data = obj.toJSON()
 
         if method is 'read'
-            Backbone.sync(method, obj, options).done ->
+            Backbone.sync(method, obj, options)
+            .fail (xhr) ->
+                console.error("ERROR",xhr.responseText)
+                obj.trigger('sync:error', obj, xhr, options)
+                # TOOO: parse JSON responseText
+                err = new Error(xhr.status+": "+xhr.responseText)
+                deferredSync.reject(err)
+            .done ->
                 obj.dirty = {}
                 deferredSync.resolve()
         else
@@ -87,10 +94,11 @@ class Wakeful
        
         obj.broadcastEchoQueue = []
 
-        unless Wakeful.fayeClients[fayeUrl]? and
-                Wakeful.fayeClients[fayeUrl].getState() in ['CONNECTED', 'CONNECTING']
-            
-            Wakeful.fayeClients[fayeUrl] = new Wakeful.Faye.Client(fayeUrl, timeout: 35) # WakefulWeasel timeout is 30 seconds, so +5 here... see http://faye.jcoglan.com/browser.html
+        # FIXME: Not really sure what's going on here... the original intention was not to re-use
+        #        faye clients, but Faye 1.0 seems to discourage the way we were doing it, and this
+        #        does seem to work as is. The part I don't get is why tests start failing if we
+        #        set the client directly on obj.faye?
+        Wakeful.fayeClients[fayeUrl] = new Wakeful.Faye.Client(fayeUrl, timeout: 35) # WakefulWeasel timeout is 30 seconds, so +5 here... see http://faye.jcoglan.com/browser.html
         
         obj.faye = Wakeful.fayeClients[fayeUrl]
 
@@ -153,8 +161,8 @@ class Wakeful
                 deferredPub = $.Deferred()
 
                 # bid = broadcast id
-                # just using the Mongo ObjectId as a pseudo-unique string; 
-                # it has nothing to do with MongoDB here
+                # we're just using the Mongo ObjectId as a pseudo-unique string; 
+                # the method call has nothing to do with MongoDB
                 bid = Drowsy.generateMongoObjectId()
 
                 # don't need to stringify data... Faye does it for us
@@ -167,14 +175,13 @@ class Wakeful
 
                 unless data._id?
                     console.warn("Cannot broadcast data for a Drowsy.Document without an id!", data, this)
-                    deferredPub.reject('mssing_id')
+                    deferredPub.reject('missing_id')
                     return deferredPub
 
-                bcast = 
+                bcast =
                     action: action
                     data: data
                     bid: bid
-                    origin: @origin()
                 
                 @broadcastEchoQueue.push(deferredPub)
 
@@ -218,11 +225,6 @@ class Wakeful
                     echoOf.resolve()
                     return
                 
-                # FIXME: this probably doesn't actually do anything since messages to
-                #   self would be caught by the echoOf check
-                # if bcast.origin? and bcast.origin is @origin()
-                #     console.warn @origin(),"received broadcast from self... how did this happen?"
-                #     return
 
                 @trigger 'wakeful:broadcast:received', bcast
 
@@ -245,9 +247,6 @@ class Wakeful
                             @set docs, remove: false
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
-
-            origin: ->
-                readVal(this, @url) + "#" + @faye.getClientId()
 
         obj.faye.bind 'transport:up', =>
             @trigger 'transport:up'

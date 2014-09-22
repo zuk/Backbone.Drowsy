@@ -259,9 +259,7 @@
                   return done();
                 });
                 bc = doc1.broadcast('update', doc1.toJSON());
-                return bc.progress(function(n) {
-                  return console.log(n);
-                });
+                return bc.progress(function(n) {});
               });
             });
           });
@@ -288,9 +286,7 @@
                   return done();
                 });
                 bc = doc1.broadcast('update', doc1.toJSON());
-                return bc.progress(function(n) {
-                  return console.log(n);
-                });
+                return bc.progress(function(n) {});
               });
             });
           });
@@ -532,6 +528,36 @@
           });
         });
       });
+      it("should trigger a 'sync' event on successful save()", function(done) {
+        var doc1, saveSync;
+        doc1 = new this.TestDoc();
+        saveSync = false;
+        return doc1.wake(WEASEL_URL).done(function() {
+          doc1.once('sync', function() {
+            return saveSync = true;
+          });
+          return doc1.save().done(function() {
+            saveSync.should.be["true"];
+            return done();
+          });
+        });
+      });
+      it("should trigger a 'sync' event on successful fetch()", function(done) {
+        var doc1, fetchSync;
+        doc1 = new this.TestDoc();
+        fetchSync = false;
+        return doc1.save().done(function() {
+          return doc1.wake(WEASEL_URL).done(function() {
+            doc1.once('sync', function() {
+              return fetchSync = true;
+            });
+            return doc1.fetch().done(function() {
+              fetchSync.should.be["true"];
+              return done();
+            });
+          });
+        });
+      });
       it("should trigger a 'sync' event on successful fetch() and save()", function(done) {
         var doc1;
         doc1 = new this.TestDoc();
@@ -543,11 +569,12 @@
           doc1.once('sync', function() {
             return saveSync1 = true;
           });
-          return doc1.save().done(function() {
+          doc1.once('wakeful:broadcast:echo', function(bcast) {
+            bcast.action.should.equal('update');
             doc1.once('sync', function() {
               return fetchSync = true;
             });
-            return doc1.fetch().done(function() {
+            return doc1.fetch().fail(done).done(function() {
               doc1.once('sync', function() {
                 saveSync2 = true;
                 saveSync1.should.be["true"];
@@ -560,52 +587,50 @@
               });
             });
           });
+          return doc1.save();
         });
       });
       return it("should clear dirtyAttributes on successful save() and fetch()", function(done) {
         var doc1, doc2;
         doc1 = new this.TestDoc();
         doc2 = new this.TestDoc();
-        return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
-          doc1.set('foo', 1);
-          doc2.set('foo', 'a');
-          doc1.dirtyAttributes().should.eql({
-            _id: doc1.id,
-            foo: 1
-          });
-          doc2.dirtyAttributes().should.eql({
-            _id: doc2.id,
-            foo: 'a'
-          });
-          doc1.once('sync', function() {
-            doc1.dirtyAttributes().should.eql({});
+        return $.when(doc1.save(), doc2.save()).done(function() {
+          return $.when(doc1.wake(WEASEL_URL), doc2.wake(WEASEL_URL)).done(function() {
+            doc1.set('foo', 1);
+            doc2.set('foo', 'a');
+            doc1.dirtyAttributes().should.eql({
+              foo: 1
+            });
             doc2.dirtyAttributes().should.eql({
-              _id: doc2.id,
               foo: 'a'
             });
-            doc1.set('foo', 2);
             doc1.once('sync', function() {
               doc1.dirtyAttributes().should.eql({});
               doc2.dirtyAttributes().should.eql({
-                _id: doc2.id,
                 foo: 'a'
               });
-              doc1.set('foo', 3);
+              doc1.set('foo', 2);
               doc1.once('sync', function() {
                 doc1.dirtyAttributes().should.eql({});
                 doc2.dirtyAttributes().should.eql({
-                  _id: doc2.id,
                   foo: 'a'
                 });
-                return done();
+                doc1.set('foo', 3);
+                doc1.once('sync', function() {
+                  doc1.dirtyAttributes().should.eql({});
+                  doc2.dirtyAttributes().should.eql({
+                    foo: 'a'
+                  });
+                  return done();
+                });
+                return doc1.save({}, {
+                  patch: true
+                });
               });
-              return doc1.save({}, {
-                patch: true
-              });
+              return doc1.fetch();
             });
-            return doc1.fetch();
+            return doc1.save();
           });
-          return doc1.save();
         });
       });
     });
