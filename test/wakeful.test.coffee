@@ -44,7 +44,7 @@ describe 'Wakeful', ->
     @timeout 6000
     @slow 1000
 
-    before ->
+    before (done) ->
         @server = new Drowsy.Server(DROWSY_URL)
         @db = @server.database(TEST_DB)
         class TestDoc extends @db.Document(TEST_COLLECTION)
@@ -53,6 +53,15 @@ describe 'Wakeful', ->
         class TestColl extends @db.Collection(TEST_COLLECTION)
             model: TestDoc
         @TestColl = TestColl
+
+        # Drop the test collection if it exists
+        Backbone.$.ajax("#{DROWSY_URL}/#{TEST_DB}/#{TEST_COLLECTION}", type: 'DELETE')
+            .always -> # always, because we ignore the error raised if the DELETE fails because the collection doesn't exist
+                # Recreate the test collection
+                Backbone.$.ajax("#{DROWSY_URL}/#{TEST_DB}", type: 'POST', data: {collection: TEST_COLLECTION})
+                    .fail(done)
+                    .done(-> done())
+
 
     afterEach ->
         # for sub in Wakeful.subs
