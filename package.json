@@ -1,42 +1,47 @@
 {
-  "name": "backbone.drowsy",
+  "name": "backbone.drowsy.encorelab",
   "main": "backbone.drowsy.js",
   "preferGlobal": false,
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "Matt Zukowski",
   "description": "Backbone Model for use with DrowsyDromedary (MongoDB) as a backend",
   "contributors": [
-    {
-      "name": "Matt Zukowski",
-      "email": "matt@zukowski.ca"
-    },
-    {
-      "name": "Armin Krauss",
-      "email": "mackrauss@gmail.com"
-    }
+    "Matt Zukowski <matt@zukowski.ca>",
+    "Armin Krauss <mackrauss@gmail.com>"
   ],
   "repository": {
     "type": "git",
     "url": "https://github.com/encorelab/Backbone.Drowsy.git"
   },
   "dependencies": {
-    "jquery" : "1.8.3",
-    "underscore" : "1.4.4",
-    "backbone" : "1.0.0"
+    "jquery": "1.8.3",
+    "underscore": "1.4.4",
+    "backbone": "1.0.0",
+    "faye": "1.1.1"
   },
   "analyze": false,
   "optionalDependencies": {
-    "faye" : "0.8.8"
+    "faye": "1.1.1"
   },
   "devDependencies": {
-    "coffee-script" : "1.4.0",
-    "mocha" : "1.8.1",
-    "chai" : "1.4.2"
+    "coffee-script": "1.4.0",
+    "mocha": "1.8.1",
+    "chai": "1.4.2"
   },
-  "bundleDependencies": [
-  ],
+  "bundleDependencies": [],
   "license": "MIT",
   "engines": {
     "node": ">=0.8"
+  },
+  "bugs": {
+    "url": "https://github.com/encorelab/Backbone.Drowsy/issues"
+  },
+  "homepage": "https://github.com/encorelab/Backbone.Drowsy",
+  "directories": {
+    "example": "example",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
   }
 }
