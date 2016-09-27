@@ -44,7 +44,7 @@ describe 'Wakeful', ->
     @timeout 6000
     @slow 1000
 
-    before ->
+    before (done) ->
         @server = new Drowsy.Server(DROWSY_URL)
         @db = @server.database(TEST_DB)
         class TestDoc extends @db.Document(TEST_COLLECTION)
@@ -53,6 +53,15 @@ describe 'Wakeful', ->
         class TestColl extends @db.Collection(TEST_COLLECTION)
             model: TestDoc
         @TestColl = TestColl
+
+        # Drop the test collection if it exists
+        Backbone.$.ajax("#{DROWSY_URL}/#{TEST_DB}/#{TEST_COLLECTION}", type: 'DELETE')
+            .always -> # always, because we ignore the error raised if the DELETE fails because the collection doesn't exist
+                # Recreate the test collection
+                Backbone.$.ajax("#{DROWSY_URL}/#{TEST_DB}", type: 'POST', data: {collection: TEST_COLLECTION})
+                    .fail(done)
+                    .done(-> done())
+
 
     afterEach ->
         # for sub in Wakeful.subs
@@ -264,7 +273,7 @@ describe 'Wakeful', ->
 
                             bc = doc1.broadcast 'update', doc1.toJSON()
                             bc.progress (n) ->
-                                console.log n
+                                # console.log n
 
             it "should send an update from a Drowsy.Document to its containing Drowsy.Collection", (done) ->
                 doc1 = new @TestDoc()
@@ -294,7 +303,7 @@ describe 'Wakeful', ->
 
                             bc = doc1.broadcast 'update', doc1.toJSON()
                             bc.progress (n) ->
-                                console.log n
+                                # console.log n
                         
 
     describe ".sync", ->
@@ -446,6 +455,9 @@ describe 'Wakeful', ->
             doc1 = new @TestDoc()
             doc2 = new @TestDoc()
 
+            # doc1.on 'all', (ev, data) -> console.log("#{Date.now()}", 'doc1', ev)
+            # doc2.on 'all', (ev, data) -> console.log("#{Date.now()}", 'doc2', ev)
+
             doc1.save().done ->
                 doc2.set '_id', doc1.id
 
@@ -547,24 +559,60 @@ describe 'Wakeful', ->
                         #doc1.save()
                         doc1.save(this_is_a_date: theDate)
 
+        it "should trigger a 'sync' event on successful save()", (done) ->
+            doc1 = new @TestDoc()
+
+            saveSync = false
+            doc1.wake(WEASEL_URL).done ->
+                doc1.once 'sync', ->
+                    saveSync = true
+
+                doc1.save().done ->
+                    saveSync.should.be.true
+                    done()
+
+        it "should trigger a 'sync' event on successful fetch()", (done) ->
+            doc1 = new @TestDoc()
+
+            fetchSync = false
+            doc1.save().done ->
+                doc1.wake(WEASEL_URL).done ->
+                    doc1.once 'sync', ->
+                        fetchSync = true
+
+                    doc1.fetch().done ->
+                        fetchSync.should.be.true
+                        done()
+
+
         it "should trigger a 'sync' event on successful fetch() and save()", (done) ->
             doc1 = new @TestDoc()
 
             doc1.wake(WEASEL_URL).done ->
+                # doc1.on 'all', (ev) -> console.log(ev)
 
                 saveSync1 = false
                 saveSync2 = false
                 fetchSync = false
 
+                # should be triggered by the first .save() call... note that this gets triggered
+                # before the data is actually written to disk by Wakeful through Drowsy. Since
+                # we need to wait until the data is written to disk before calling .fetch(), we
+                # have to listen for 'wakeful:broadcast:echo' before we can do anything.
                 doc1.once 'sync', ->
                     saveSync1 = true
 
-                doc1.save().done ->
-                    doc1.once 'sync', ->
+                # wakeful:broadcast:echo gets triggered once we receive back our own create/update broadcast
+                doc1.once 'wakeful:broadcast:echo', (bcast) ->
+                    bcast.action.should.equal('update') # FIXME: this should actually be 'create', not 'update', since this will be a new doc
+
+                    doc1.once 'sync', -> # should be triggered by the .fetch() call
                         fetchSync = true
 
-                    doc1.fetch().done ->
-                        doc1.once 'sync', ->
+                    doc1.fetch()
+                    .fail(done)
+                    .done ->
+                        doc1.once 'sync', -> # should be triggered by the second .sync() call
                             saveSync2 = true
 
                             saveSync1.should.be.true
@@ -575,44 +623,55 @@ describe 'Wakeful', ->
 
                         doc1.save({}, patch: true)
 
+
+                doc1.save()
+
         it "should clear dirtyAttributes on successful save() and fetch()", (done) ->
             doc1 = new @TestDoc()
             doc2 = new @TestDoc()
 
+            # doc1.on 'all', (ev, data) -> console.log("#{Date.now()}", 'doc1', ev)
+            # doc2.on 'all', (ev, data) -> console.log("#{Date.now()}", 'doc2', ev)
+
+
             $.when(
-                doc1.wake(WEASEL_URL),
-                doc2.wake(WEASEL_URL)
+                doc1.save(),
+                doc2.save()
             ).done ->
+                $.when(
+                    doc1.wake(WEASEL_URL),
+                    doc2.wake(WEASEL_URL)
+                ).done ->
 
-                doc1.set('foo', 1)
-                doc2.set('foo', 'a') # want to make sure that dirtyAttributes reset is per-instance
-                
-                doc1.dirtyAttributes().should.eql {_id: doc1.id, foo: 1}
-                doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
-
-                doc1.once 'sync', ->
-                    doc1.dirtyAttributes().should.eql {}
-                    doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
-
-                    doc1.set('foo', 2)
+                    doc1.set('foo', 1)
+                    doc2.set('foo', 'a') # set different values on different instances make sure that
+                                         # dirtyAttributes reset is done on the correct instance
+                    doc1.dirtyAttributes().should.eql {foo: 1}
+                    doc2.dirtyAttributes().should.eql {foo: 'a'}
 
                     doc1.once 'sync', ->
                         doc1.dirtyAttributes().should.eql {}
-                        doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+                        doc2.dirtyAttributes().should.eql {foo: 'a'}
 
-                        doc1.set('foo', 3)
+                        doc1.set('foo', 2)
 
                         doc1.once 'sync', ->
                             doc1.dirtyAttributes().should.eql {}
-                            doc2.dirtyAttributes().should.eql {_id: doc2.id, foo: 'a'}
+                            doc2.dirtyAttributes().should.eql {foo: 'a'}
 
-                            done()
+                            doc1.set('foo', 3)
 
-                        doc1.save({}, patch: true)
+                            doc1.once 'sync', ->
+                                doc1.dirtyAttributes().should.eql {}
+                                doc2.dirtyAttributes().should.eql {foo: 'a'}
 
-                    doc1.fetch()
+                                done()
 
-                doc1.save()
+                            doc1.save({}, patch: true)
+
+                        doc1.fetch()
+
+                    doc1.save()
                 
 
         

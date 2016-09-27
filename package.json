@@ -21,7 +21,7 @@
   },
   "analyze": false,
   "optionalDependencies": {
-    "faye": "1.1.1"
+    "faye" : "0.8.9"
   },
   "devDependencies": {
     "coffee-script": "1.4.0",
