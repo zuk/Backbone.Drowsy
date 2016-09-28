@@ -17,10 +17,10 @@ else
 
 
 # calls the given val if it's a function, or just returns it as is otherwise
-readVal = (context, val) -> 
-    if _.isFunction(val) 
+readVal = (context, val) ->
+    if _.isFunction(val)
         val.call context
-    else 
+    else
         val
 
 # FIXME: under Firefox, Faye seems to occassionally use JSONP instead of WebSockets
@@ -73,6 +73,8 @@ class Wakeful
                     delete changedJSON._id # id can't change
 
                     obj.broadcast(method, changedJSON)
+                when 'delete'
+                    obj.broadcast(method, obj)
 
             # FIXME: maybe don't resolve and trigger until .broadcast() resolves?
             obj.dirty = {}
@@ -87,11 +89,11 @@ class Wakeful
         if obj.fayeUrl? and obj.fayeUrl is fayeUrl
             console.log obj,"is already awake... skipping"
             return
-        
+
         throw new Error("Must provide a fayeUrl") unless fayeUrl?
-        
+
         obj.fayeUrl = fayeUrl
-       
+
         obj.broadcastEchoQueue = []
 
         # FIXME: Not really sure what's going on here... the original intention was not to re-use
@@ -107,7 +109,7 @@ class Wakeful
         obj = _.extend obj,
             subscriptionUrl: ->
                 drowsyUrl = readVal(this, @url)
-                # This regex matches Drowsy urls like 
+                # This regex matches Drowsy urls like
                 #   http://drowsy.example.com/my-database/my-collection
                 #   http://localhost/mydb/some_collection/13ad6a54cb08c806f8f00000
                 #   https://drowsy.foo.com/example-database/some.collection
@@ -141,12 +143,12 @@ class Wakeful
                     throw new Error("Cannot call tunein() on Drowsy.Document because it has not yet been assigned an id", this)
 
                 deferredSub = $.Deferred()
-                
+
                 @sub = @faye.subscribe @subscriptionUrl(), _.bind(@receiveBroadcast, this)
 
                 @sub.callback ->
                     deferredSub.resolve()
-                @sub.errback (err) -> 
+                @sub.errback (err) ->
                     deferredSub.reject(err)
 
                 Wakeful.subs.push @sub
@@ -161,8 +163,13 @@ class Wakeful
                 deferredPub = $.Deferred()
 
                 # bid = broadcast id
+<<<<<<< HEAD
+                # just using the Mongo ObjectId as a pseudo-unique string;
+                # it has nothing to do with MongoDB here
+=======
                 # we're just using the Mongo ObjectId as a pseudo-unique string; 
                 # the method call has nothing to do with MongoDB
+>>>>>>> 6eb1bef662b5dcbc956eac0a980575b5febf642b
                 bid = Drowsy.generateMongoObjectId()
 
                 # don't need to stringify data... Faye does it for us
@@ -182,24 +189,29 @@ class Wakeful
                     action: action
                     data: data
                     bid: bid
+<<<<<<< HEAD
+                    origin: @origin()
+
+=======
                 
+>>>>>>> 6eb1bef662b5dcbc956eac0a980575b5febf642b
                 @broadcastEchoQueue.push(deferredPub)
 
                 toChannel = @subscriptionUrl()
                 if this instanceof Drowsy.Collection
                     toChannel = toChannel.replace(/\*$/,'~') # hack to get channel subscription to hear its own broadcasts
-                
+
                 pub = @faye.publish toChannel, bcast
 
                 @trigger 'wakeful:broadcast:sent', bcast
                 deferredPub.notify 'sent'
-                
+
                 pub.callback =>
                     # NOTE: Usually this will get executed AFTER deferredPub.
                     #       ... not sure why, but Faye seems to execute this callback
                     #       some time after broadcasting the pub.
                     #       As a consequence, a .progress() handler bound to
-                    #       deferredPub for 'confirmed' doesn't normally get triggered, 
+                    #       deferredPub for 'confirmed' doesn't normally get triggered,
                     #       since it will have resolved already.
                     @trigger 'wakeful:broadcast:confirmed', bcast
                     deferredPub.notify 'confirmed'
@@ -215,16 +227,25 @@ class Wakeful
                 return deferredPub
 
 
-            receiveBroadcast: (bcast) -> 
+            receiveBroadcast: (bcast) ->
                 echoOf = _.find @broadcastEchoQueue, (defPub) -> defPub.bid is bcast.bid
-                
+
                 if echoOf?
                     echoIndex = _.indexOf @broadcastEchoQueue, echoOf
                     @broadcastEchoQueue.splice(echoIndex, 1) # remove echoOf
                     @trigger 'wakeful:broadcast:echo', bcast
                     echoOf.resolve()
                     return
+<<<<<<< HEAD
+
+                # FIXME: this probably doesn't actually do anything since messages to
+                #   self would be caught by the echoOf check
+                # if bcast.origin? and bcast.origin is @origin()
+                #     console.warn @origin(),"received broadcast from self... how did this happen?"
+                #     return
+=======
                 
+>>>>>>> 6eb1bef662b5dcbc956eac0a980575b5febf642b
 
                 @trigger 'wakeful:broadcast:received', bcast
 
@@ -245,6 +266,12 @@ class Wakeful
                             docs = docs.map (doc) => @model::parse(doc)
 
                             @set docs, remove: false
+                    when 'delete'
+                        if this instanceof Drowsy.Document
+                            @destroy({wait:true})
+                        else
+                            if @get(bcast.data._id)
+                                @get(bcast.data._id).destroy(wait:true)
                     else
                         console.warn "Don't know how to handle broadcast with action", bcast.action
 
@@ -263,7 +290,7 @@ class Wakeful
     #   to wait until the script has been loaded
     @loadFayeClient: (fayeUrl) ->
         deferredLoad = $.Deferred()
-        $.getScript "#{fayeUrl}/client.js", (script) -> 
+        $.getScript "#{fayeUrl}/client.js", (script) ->
             # CoffeeScript prevents us from using late-loaded globals in our code so
             #   have to load it into Wakeful instead
             Wakeful.Faye = window.Faye
